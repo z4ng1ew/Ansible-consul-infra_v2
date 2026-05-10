@@ -1,4 +1,3 @@
-cat > ~/Ansible-consul-infra/src/ansible02/Vagrantfile << 'ENDVAGRANT'
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 VAGRANTFILE_API_VERSION = "2"
