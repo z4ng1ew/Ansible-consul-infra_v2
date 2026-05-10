@@ -342,8 +342,21 @@ scp -r services manager:~/
 
 ![alt text](<imd/1/image copy 24.png>)
 **node02: ok=15 failed=0**
+**Apache, PostgreSQL, таблица с 3 записями**
 
-Apache, PostgreSQL, таблица с 3 записями**
+
+![alt text](<imd/1/image copy 25.png>)
+**Apache в браузере**
+>
+http://192.168.56.12/
+
+Hello from node02!
+
+Apache is running on node02 (192.168.56.12)
+>
+
+
+
 
 
 4) Все файлы Ansible находятся в папке src\ansible01.
