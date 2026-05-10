@@ -1,12 +1,15 @@
 ---
-# roles/postgres/tasks/main.yml
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
 - name: Install PostgreSQL
   apt:
     name:
       - postgresql
       - postgresql-contrib
     state: present
-    update_cache: yes
 
 - name: Start and enable PostgreSQL
   systemd:
@@ -14,25 +17,51 @@
     state: started
     enabled: yes
 
+- name: Configure PostgreSQL to listen on all interfaces
+  lineinfile:
+    path: /etc/postgresql/14/main/postgresql.conf
+    regexp: "^#?listen_addresses"
+    line: "listen_addresses = '*'"
+  notify: restart postgresql
+
+- name: Allow remote connections in pg_hba
+  lineinfile:
+    path: /etc/postgresql/14/main/pg_hba.conf
+    line: "host    all    all    0.0.0.0/0    md5"
+  notify: restart postgresql
+
+- name: Set postgres user password
+  become_user: postgres
+  shell: psql -c "ALTER USER postgres PASSWORD 'postgres';"
+  changed_when: true
+
 - name: Create test database
   become_user: postgres
-  postgresql_db:
-    name: test_db
-    state: present
-  ignore_errors: yes
+  shell: psql -c "SELECT 1 FROM pg_database WHERE datname='test_db'" | grep -q 1 || psql -c "CREATE DATABASE test_db;"
+  changed_when: true
 
-- name: Create test table with 3 records
+- name: Create table and insert data
   become_user: postgres
-  postgresql_query:
-    db: test_db
-    query: |
-      CREATE TABLE IF NOT EXISTS demo (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100),
-        value TEXT
-      );
-      INSERT INTO demo (name, value) VALUES
-        ('Record 1', 'Value A'),
-        ('Record 2', 'Value B'),
-        ('Record 3', 'Value C');
-  ignore_errors: yes
+  shell: |
+    psql -d test_db -c "
+    CREATE TABLE IF NOT EXISTS demo (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(100),
+      value TEXT
+    );
+    DELETE FROM demo;
+    INSERT INTO demo (name, value) VALUES
+      ('Record 1', 'Value A'),
+      ('Record 2', 'Value B'),
+      ('Record 3', 'Value C');
+    "
+  changed_when: true
+
+- name: Show table contents
+  become_user: postgres
+  shell: psql -d test_db -c "SELECT * FROM demo;"
+  register: db_contents
+
+- name: Display database contents
+  debug:
+    var: db_contents.stdout_lines

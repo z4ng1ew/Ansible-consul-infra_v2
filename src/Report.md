@@ -380,3 +380,74 @@ scp -r services manager:~/
     5) The install_hotels_service opens jdk-8-jdk role, copies the source code of the service, creates global environment systems, runs the built JAR file with the command.
     6) The results of the manual CRUD tests are provided as a screenshot.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5. Сформировать три роли: 
+   - роль application выполняет развертывание микросервисного приложения при помощи docker-compose;
+   - apache устанавливает и запускает стандартный apache сервер;
+   - postgres устанавливает и запускает postgres, создает базу данных с произвольной таблицей и добавляет в нее три произвольные записи. 
+   - Назначить первую роль node01 и вторые две роли node02, проверить postman-тестами работоспособность микросервисного приложения, удостовериться в доступности postgres и apache-сервера. Для Apache веб-страница должна открыться в браузере. Что касается PostgreSQL, необходимо подключиться с локальной машины и отобразить содержимое ранее созданной таблицы с данными.
+
+6. Созданные в этом разделе файлы разместить в папке `src\ansible01` в личном репозитории.
+
+## Part 2. Service Discovery
+
+Теперь перейдем к обнаружению сервисов. В этой главе тебе предстоит сымитировать два удаленных сервиса — api и БД, и осуществить между ними подключение через Service Discovery с использованием Consul.
+
+### Задание
+
+1. Написать два конфигурационных файла для consul (информация по consul в материалах):
+   - consul_server.hcl:
+      - настроить агент как сервер;
+      - указать в advertise_addr интерфейс, направленный во внутреннюю сеть Vagrant;
+   - consul_client.hcl:
+      - настроить агент как клиент;
+      - указать в advertise_addr интерфейс, направленный во внутреннюю сеть Vagrant.
+
+2. Создать с помощью Vagrant четыре машины: consul_server, api, manager и db.
+   - Прокинуть порт 8082 с api на локальную машину для доступа к пока еще не развернутому api.
+   - Прокинуть порт 8500 с consul_server для доступа к ui consul. 
+
+3. Написать плейбук для ansible и четыре роли: 
+   - install_consul_server, которая:
+      - работает с consul_server;
+      - копирует consul_server.hcl;
+      - устанавливает consul и необходимые для consul зависимости;
+      - запускает сервис consul;
+   - install_consul_client, которая:
+      - работает с api и db;
+      - копирует consul_client.hcl;
+      - устанавливает consul, envoy и необходимые для consul зависимости; 
+      - запускает сервис consul и consul-envoy;
+   - install_db, которая:
+      - работает с db;
+      - устанавливает postgres и запускает его;
+      - создает базу данных `hotels_db`;
+   - install_hotels_service, которая:
+      - работает с api;
+      - копирует исходный код сервиса;
+      - устанавливает `openjdk-21-jdk`;
+      - создает глобальные переменные окружения:
+         - POSTGRES_HOST="127.0.0.1";
+         - POSTGRES_PORT="5432";
+         - POSTGRES_DB="hotels_db";
+         - POSTGRES_USER="<имя пользователя>";
+         - POSTGRES_PASSWORD="<пароль пользователя>";
+      - запускает собранный jar-файл командой `java -jar <путь до hotel-service>/hotel-service/target/<имя jar-файла>.jar`.
+
+4. Проверить работоспособность CRUD-операций над сервисом отелей. В отчете отобразить результаты тестирования.
+
+5. Созданные в этом разделе файлы разместить в папках `src\ansible02` и `src\consul01` в личном репозитории.

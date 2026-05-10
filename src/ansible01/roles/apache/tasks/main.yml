@@ -1,10 +1,13 @@
 ---
-# roles/apache/tasks/main.yml
-- name: Install Apache httpd
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install Apache
   apt:
     name: apache2
     state: present
-    update_cache: yes
 
 - name: Start and enable Apache
   systemd:
@@ -12,9 +15,16 @@
     state: started
     enabled: yes
 
-- name: Open port 80 in firewall
-  ufw:
-    rule: allow
-    port: '80'
-    proto: tcp
-  ignore_errors: yes  # ufw может быть не установлен
+- name: Create custom index page
+  copy:
+    content: |
+      <html>
+      <head><title>Node02 - Apache</title></head>
+      <body>
+      <h1>Hello from node02!</h1>
+      <p>Apache is running on node02 (192.168.56.12)</p>
+      </body>
+      </html>
+    dest: /var/www/html/index.html
+    owner: www-data
+    mode: '0644'
