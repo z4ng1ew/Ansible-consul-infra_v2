@@ -10,15 +10,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.provider "libvirt" do |libvirt|
     libvirt.uri    = 'qemu:///system'
     libvirt.driver = "kvm"
-    libvirt.memory = 8024
-    libvirt.cpus   = 8
+    libvirt.memory = 2048
+    libvirt.cpus   = 2
     libvirt.nested = true
     libvirt.qemu_use_agent = true
   end
 
   config.vm.boot_timeout = 600
 
-  # fix-private-net provisioner
   config.vm.provision "fix-private-net", type: "shell", inline: <<-'SHELL'
     case "$(hostname)" in
       consul-server) IP="192.168.56.20" ;;
@@ -27,10 +26,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       db)            IP="192.168.56.23" ;;
       *)             echo "Unknown hostname"; exit 0 ;;
     esac
-
     IFACE=$(ip -br link | awk '$1 != "lo" && !/^ens5|^eth0/ {print $1; exit}')
     [ -z "$IFACE" ] && { echo "Second interface not found"; exit 0; }
-
     cat > /etc/netplan/60-private.yaml <<EOF
 network:
   version: 2
@@ -46,9 +43,11 @@ EOF
     echo "Configured ${IFACE} = ${IP}"
   SHELL
 
-  # 1. consul_server
   config.vm.define "consul_server" do |cs|
     cs.vm.hostname = "consul-server"
+    cs.vm.provider "libvirt" do |lv|
+      lv.management_network_mac = "52:54:00:AA:BB:10"
+    end
     cs.vm.network "private_network",
       ip: "192.168.56.20",
       libvirt__network_name: "vagrant-private",
@@ -56,15 +55,15 @@ EOF
       libvirt__forward_mode: "nat",
       auto_config: false,
       mac: "525400222220"
-    cs.vm.network "forwarded_port", guest: 8500, host: 8500
+    cs.vm.network "forwarded_port", guest: 8500, host: 8500, auto_correct: true
   end
 
-  # 2. api
   config.vm.define "api" do |api|
     api.vm.hostname = "api"
     api.vm.provider "libvirt" do |lv|
-      lv.memory = 8048
-      lv.cpus   = 8
+      lv.memory = 4096
+      lv.cpus   = 4
+      lv.management_network_mac = "52:54:00:AA:BB:11"
     end
     api.vm.network "private_network",
       ip: "192.168.56.21",
@@ -73,12 +72,14 @@ EOF
       libvirt__forward_mode: "nat",
       auto_config: false,
       mac: "525400222221"
-    api.vm.network "forwarded_port", guest: 8082, host: 8082
+    api.vm.network "forwarded_port", guest: 8082, host: 8082, auto_correct: true
   end
 
-  # 3. manager
   config.vm.define "manager2" do |mgr|
     mgr.vm.hostname = "manager2"
+    mgr.vm.provider "libvirt" do |lv|
+      lv.management_network_mac = "52:54:00:AA:BB:12"
+    end
     mgr.vm.network "private_network",
       ip: "192.168.56.22",
       libvirt__network_name: "vagrant-private",
@@ -91,9 +92,11 @@ EOF
     SHELL
   end
 
-  # 4. db
   config.vm.define "db" do |db|
     db.vm.hostname = "db"
+    db.vm.provider "libvirt" do |lv|
+      lv.management_network_mac = "52:54:00:AA:BB:13"
+    end
     db.vm.network "private_network",
       ip: "192.168.56.23",
       libvirt__network_name: "vagrant-private",
@@ -103,4 +106,3 @@ EOF
       mac: "525400222223"
   end
 end
-ENDVAGRANT
