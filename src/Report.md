@@ -359,24 +359,69 @@ Apache is running on node02 (192.168.56.12)
 
 
 
+![alt text](<imd/1/image copy 26.png>)
+**PLAY RECAP с обеими нодами failed=0**
+
+
+
+
+![alt text](<imd/1/image copy 27.png>)
+**3 записи**
+**postgres устанавливает и запускает postgres, создает базу данных с произвольной таблицей и добавляет в нее три произвольные записи**
+
+
+
+
+![alt text](<imd/1/image copy 28.png>)
+
+
+
+
 4) Все файлы Ansible находятся в папке src\ansible01.
 
+![alt text](<imd/1/image copy 29.png>)
+
+
+
+>
+(base) s@fedora:~/Ansible-consul-infra/src/ansible01$ tree 
+.
+├── files
+│   ├── docker-compose.yml
+│   ├── microservices-images.tar.gz
+│   └── rabbitmq.tar.gz
+├── inventory
+│   └── hosts.ini
+├── playbook.yml
+└── roles
+    ├── apache
+    │   ├── defaults
+    │   ├── files
+    │   ├── handlers
+    │   └── tasks
+    │       └── main.yml
+    ├── application
+    │   ├── defaults
+    │   ├── files
+    │   ├── handlers
+    │   │   └── main.yml
+    │   └── tasks
+    │       └── main.yml
+    └── postgres
+        ├── defaults
+        ├── files
+        ├── handlers
+        │   └── main.yml
+        └── tasks
+            └── main.yml
+
+19 directories, 10 files
+(base) s@fedora:~/Ansible-consul-infra/src/ansible01$ 
+>
 
 
 
 
-
-
-
-
-
-
-    2. Плейбук и тесты Ansible
-
-1) Существует плейбук, который выполняет команду apt update, устанавливает Docker, Docker Compose, копирует файл Compose из менеджера и развертывает микросервисное приложение; этот плейбук выполняет эти задачи.
-2) Результаты тестов Postman представлены в виде скриншота.
-3) Существует три роли для развертывания приложения, развертывания сервера Apache и развертывания базы данных Postgres; первая роль назначается в файле инвентаризации первому узлу, а две другие — второму узлу.
-4) Все файлы Ansible находятся в src\ansible01.
 
 
 
