@@ -1,0 +1,115 @@
+---
+- name: Deploy microservices application
+  hosts: node01
+  become: true
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Docker prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Add Docker GPG key
+      shell: |
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        chmod a+r /etc/apt/keyrings/docker.asc
+      args:
+        creates: /etc/apt/keyrings/docker.asc
+
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    - name: Update apt after Docker repo
+      apt:
+        update_cache: yes
+
+    - name: Install Docker and Docker Compose
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+
+    - name: Ensure Docker is running
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Configure Docker DNS
+      copy:
+        content: |
+          {
+            "dns": ["8.8.8.8", "1.1.1.1", "77.88.8.8"]
+          }
+        dest: /etc/docker/daemon.json
+      notify: Restart Docker
+
+    - name: Create application directory
+      file:
+        path: /opt/microservices
+        state: directory
+        mode: '0755'
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: files/docker-compose.yml
+        dest: /opt/microservices/docker-compose.yml
+
+    - name: Copy Docker images archive
+      copy:
+        src: files/microservices-images.tar.gz
+        dest: /tmp/microservices-images.tar.gz
+
+    - name: Copy RabbitMQ image archive
+      copy:
+        src: files/rabbitmq.tar.gz
+        dest: /tmp/rabbitmq.tar.gz
+
+    - name: Load microservices images
+      shell: gunzip -c /tmp/microservices-images.tar.gz | docker load
+      register: load_result
+      changed_when: "'Loaded' in load_result.stdout"
+
+    - name: Load RabbitMQ image
+      shell: gunzip -c /tmp/rabbitmq.tar.gz | docker load
+      register: load_rabbit
+      changed_when: "'Loaded' in load_rabbit.stdout"
+
+    - name: Stop existing containers
+      shell: cd /opt/microservices && docker compose down
+      ignore_errors: yes
+
+    - name: Start microservices
+      shell: cd /opt/microservices && docker compose up -d
+      register: compose_result
+
+    - name: Show running containers
+      shell: docker ps --format 'table {{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}'
+      register: containers
+
+    - name: Display containers
+      debug:
+        var: containers.stdout_lines
+
+  handlers:
+    - name: Restart Docker
+      systemd:
+        name: docker
+        state: restarted

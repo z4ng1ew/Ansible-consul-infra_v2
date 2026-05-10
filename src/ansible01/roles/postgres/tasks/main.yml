@@ -1,0 +1,38 @@
+---
+# roles/postgres/tasks/main.yml
+- name: Install PostgreSQL
+  apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+    state: present
+    update_cache: yes
+
+- name: Start and enable PostgreSQL
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Create test database
+  become_user: postgres
+  postgresql_db:
+    name: test_db
+    state: present
+  ignore_errors: yes
+
+- name: Create test table with 3 records
+  become_user: postgres
+  postgresql_query:
+    db: test_db
+    query: |
+      CREATE TABLE IF NOT EXISTS demo (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100),
+        value TEXT
+      );
+      INSERT INTO demo (name, value) VALUES
+        ('Record 1', 'Value A'),
+        ('Record 2', 'Value B'),
+        ('Record 3', 'Value C');
+  ignore_errors: yes

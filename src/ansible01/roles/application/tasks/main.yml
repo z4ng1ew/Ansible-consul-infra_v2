@@ -1,0 +1,22 @@
+---
+# roles/application/tasks/main.yml
+- name: Create app directory
+  file:
+    path: /home/vagrant/app
+    state: directory
+    owner: vagrant
+    mode: '0755'
+
+- name: Copy docker-compose.yml
+  copy:
+    src: ~/docker-compose.yml
+    dest: /home/vagrant/app/docker-compose.yml
+    owner: vagrant
+    mode: '0644'
+
+- name: Deploy with docker-compose
+  shell: docker-compose up -d
+  args:
+    chdir: /home/vagrant/app
+  environment:
+    DOCKER_BUILDKIT: "0"

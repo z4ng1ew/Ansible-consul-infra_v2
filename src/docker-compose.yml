@@ -1,0 +1,196 @@
+services:
+
+  postgres:
+    build: ./services/database
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-net
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-net
+
+  session-service:
+    build: ./services/session-service
+    container_name: session-service
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: users_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "/wait-for-it.sh postgres:5432 -- java -jar app.jar"]
+    ports:
+      - "8081:8081"
+    networks:
+      - app-net
+
+  hotel-service:
+    build: ./services/hotel-service
+    container_name: hotel-service
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: hotels_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "/wait-for-it.sh postgres:5432 -- java -jar app.jar"]
+    networks:
+      - app-net
+
+  payment-service:
+    build: ./services/payment-service
+    container_name: payment-service
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: payments_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "/wait-for-it.sh postgres:5432 -- java -jar app.jar"]
+    networks:
+      - app-net
+
+  loyalty-service:
+    build: ./services/loyalty-service
+    container_name: loyalty-service
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: balances_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "/wait-for-it.sh postgres:5432 -- java -jar app.jar"]
+    networks:
+      - app-net
+
+  booking-service:
+    build: ./services/booking-service
+    container_name: booking-service
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: reservations_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      HOTEL_SERVICE_HOST: hotel-service
+      HOTEL_SERVICE_PORT: 8082
+      PAYMENT_SERVICE_HOST: payment-service
+      PAYMENT_SERVICE_PORT: 8084
+      LOYALTY_SERVICE_HOST: loyalty-service
+      LOYALTY_SERVICE_PORT: 8085
+      RABBIT_MQ_HOST: rabbitmq
+      RABBIT_MQ_PORT: 5672
+      RABBIT_MQ_USER: guest
+      RABBIT_MQ_PASSWORD: guest
+      RABBIT_MQ_QUEUE_NAME: statistics_queue
+      RABBIT_MQ_EXCHANGE: statistics_exchange
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      hotel-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      loyalty-service:
+        condition: service_started
+    entrypoint: ["sh", "-c", "/wait-for-it.sh postgres:5432 -- /wait-for-it.sh rabbitmq:5672 -- /wait-for-it.sh hotel-service:8082 -- /wait-for-it.sh payment-service:8084 -- /wait-for-it.sh loyalty-service:8085 -- java -jar app.jar"]
+    networks:
+      - app-net
+
+  report-service:
+    build: ./services/report-service
+    container_name: report-service
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: statistics_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      RABBIT_MQ_HOST: rabbitmq
+      RABBIT_MQ_PORT: 5672
+      RABBIT_MQ_USER: guest
+      RABBIT_MQ_PASSWORD: guest
+      RABBIT_MQ_QUEUE_NAME: statistics_queue
+      RABBIT_MQ_EXCHANGE: statistics_exchange
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "/wait-for-it.sh postgres:5432 -- /wait-for-it.sh rabbitmq:5672 -- java -jar app.jar"]
+    networks:
+      - app-net
+
+  gateway-service:
+    build: ./services/gateway-service
+    container_name: gateway-service
+    environment:
+      SESSION_SERVICE_HOST: session-service
+      SESSION_SERVICE_PORT: 8081
+      HOTEL_SERVICE_HOST: hotel-service
+      HOTEL_SERVICE_PORT: 8082
+      BOOKING_SERVICE_HOST: booking-service
+      BOOKING_SERVICE_PORT: 8083
+      LOYALTY_SERVICE_HOST: loyalty-service
+      LOYALTY_SERVICE_PORT: 8085
+      REPORT_SERVICE_HOST: report-service
+      REPORT_SERVICE_PORT: 8086
+    depends_on:
+      session-service:
+        condition: service_started
+      hotel-service:
+        condition: service_started
+      booking-service:
+        condition: service_started
+      loyalty-service:
+        condition: service_started
+      report-service:
+        condition: service_started
+    entrypoint: ["sh", "-c", "/wait-for-it.sh session-service:8081 -- /wait-for-it.sh hotel-service:8082 -- /wait-for-it.sh booking-service:8083 -- /wait-for-it.sh loyalty-service:8085 -- /wait-for-it.sh report-service:8086 -- java -jar app.jar"]
+    ports:
+      - "8087:8087"
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

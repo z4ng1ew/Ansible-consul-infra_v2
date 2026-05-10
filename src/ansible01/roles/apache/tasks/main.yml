@@ -1,0 +1,20 @@
+---
+# roles/apache/tasks/main.yml
+- name: Install Apache httpd
+  apt:
+    name: apache2
+    state: present
+    update_cache: yes
+
+- name: Start and enable Apache
+  systemd:
+    name: apache2
+    state: started
+    enabled: yes
+
+- name: Open port 80 in firewall
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+  ignore_errors: yes  # ufw может быть не установлен
