@@ -371,32 +371,28 @@ Apache is running on node02 (192.168.56.12)
 
 
 
-        2. Ansible playbook and tests
+    2. Плейбук и тесты Ansible
 
-    1) There is a playbook that performs apt update, installs Docker, Docker Compose, copies the Compose file from the manager, and deploys the microservice application; this playbook performs these tasks.
-    2) The results of the Postman tests are provided as a screenshot.
-    3) There are three roles for application deployment, apache server deployment, and Postgres database deployment; the first role is assigned in the inventory file to the first node and the other two to the second node.
-    4) All files for ansible are located in src\ansible01.
-
-
-
-
-        3. Consul configuration files
-
-    1) There are configuration files for the server and the client with the advertise_addr specifying the network interface directed to the internal Vagrant network.
+1) Существует плейбук, который выполняет команду apt update, устанавливает Docker, Docker Compose, копирует файл Compose из менеджера и развертывает микросервисное приложение; этот плейбук выполняет эти задачи.
+2) Результаты тестов Postman представлены в виде скриншота.
+3) Существует три роли для развертывания приложения, развертывания сервера Apache и развертывания базы данных Postgres; первая роль назначается в файле инвентаризации первому узлу, а две другие — второму узлу.
+4) Все файлы Ansible находятся в src\ansible01.
 
 
 
+    3. Конфигурационные файлы Consul
 
-        4. Consul roles
+1) Существуют конфигурационные файлы для сервера и клиента, в которых advertise_addr указывает сетевой интерфейс, направленный во внутреннюю сеть Vagrant.
 
-    1) The playbook in src\ansible02 is written to run the roles: install_consul_server, install_consul_client, install_db and install_hotels_service.
-    2) The install_consul_server role installs the consul server.
-    3) The install_consul_client role installs the consul client.
-    4) The install_db role installs Postgres and creates the hotels_db database.
-    5) The install_hotels_service opens jdk-8-jdk role, copies the source code of the service, creates global environment systems, runs the built JAR file with the command.
-    6) The results of the manual CRUD tests are provided as a screenshot.
 
+    4. Роли Consul
+
+1) Плейбук в src\ansible02 написан для запуска ролей: install_consul_server, install_consul_client, install_db и install_hotels_service.
+2) Роль install_consul_server устанавливает сервер Consul.
+3) Роль install_consul_client устанавливает клиент Consul.
+4) Роль install_db устанавливает Postgres и создает базу данных hotels_db.
+5) Роль install_hotels_service открывает роль jdk-8-jdk, копирует исходный код сервиса, создает глобальные среды systems, запускает собранный JAR-файл с помощью команды.
+6) Результаты ручных CRUD-тестов предоставляются в виде скриншота.
 
 
 
