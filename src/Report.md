@@ -338,11 +338,15 @@ scp -r services manager:~/
 
 3) Существует три роли для развертывания приложения, развертывания сервера Apache и развертывания базы данных Postgres; первая роль назначается в файле инвентаризации первому узлу, а две другие — второму узлу.
 
+![alt text](<imd/1/image copy 23.png>)
 
+![alt text](<imd/1/image copy 24.png>)
+**node02: ok=15 failed=0**
+
+Apache, PostgreSQL, таблица с 3 записями**
 
 
 4) Все файлы Ansible находятся в папке src\ansible01.
-
 
 
 
