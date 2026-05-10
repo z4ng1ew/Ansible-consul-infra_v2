@@ -1,36 +1,36 @@
+cat > ~/Ansible-consul-infra/src/ansible02/Vagrantfile << 'ENDVAGRANT'
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "my-ubuntu2204"
-
   config.ssh.insert_key = false
-
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
   config.vm.provider "libvirt" do |libvirt|
     libvirt.uri    = 'qemu:///system'
     libvirt.driver = "kvm"
-    libvirt.memory = 2048
-    libvirt.cpus   = 2
+    libvirt.memory = 1024
+    libvirt.cpus   = 1
     libvirt.nested = true
     libvirt.qemu_use_agent = true
   end
 
   config.vm.boot_timeout = 600
 
-
+  # fix-private-net provisioner
   config.vm.provision "fix-private-net", type: "shell", inline: <<-'SHELL'
     case "$(hostname)" in
-      manager) IP="192.168.56.10" ;;
-      node01)  IP="192.168.56.11" ;;
-      node02)  IP="192.168.56.12" ;;
-      *)       echo "Неизвестный hostname"; exit 0 ;;
+      consul-server) IP="192.168.56.20" ;;
+      api)           IP="192.168.56.21" ;;
+      manager2)      IP="192.168.56.22" ;;
+      db)            IP="192.168.56.23" ;;
+      *)             echo "Unknown hostname"; exit 0 ;;
     esac
 
     IFACE=$(ip -br link | awk '$1 != "lo" && !/^ens5|^eth0/ {print $1; exit}')
-    [ -z "$IFACE" ] && { echo "Второй интерфейс не найден"; exit 0; }
+    [ -z "$IFACE" ] && { echo "Second interface not found"; exit 0; }
 
     cat > /etc/netplan/60-private.yaml <<EOF
 network:
@@ -42,55 +42,66 @@ network:
       addresses: [${IP}/24]
 EOF
     chmod 600 /etc/netplan/60-private.yaml
-
-
     nohup bash -c "sleep 1 && netplan apply" > /tmp/netplan-bg.log 2>&1 &
     disown
-
     echo "Configured ${IFACE} = ${IP}"
   SHELL
 
-
-  config.vm.define "manager" do |m|
-    m.vm.hostname = "manager"
-    m.vm.network "private_network",
-      ip: "192.168.56.10",
+  # 1. consul_server
+  config.vm.define "consul_server" do |cs|
+    cs.vm.hostname = "consul-server"
+    cs.vm.network "private_network",
+      ip: "192.168.56.20",
       libvirt__network_name: "vagrant-private",
       libvirt__dhcp_enabled: false,
       libvirt__forward_mode: "nat",
       auto_config: false,
-      mac: "525400111110"          
+      mac: "525400222220"
+    cs.vm.network "forwarded_port", guest: 8500, host: 8500
   end
 
-
-  config.vm.define "node01" do |n|
-    n.vm.hostname = "node01"
-    n.vm.provider "libvirt" do |libvirt|
-      libvirt.memory = 4096
-      libvirt.cpus   = 4
+  # 2. api
+  config.vm.define "api" do |api|
+    api.vm.hostname = "api"
+    api.vm.provider "libvirt" do |lv|
+      lv.memory = 2048
+      lv.cpus   = 2
     end
-    n.vm.network "private_network",
-      ip: "192.168.56.11",
+    api.vm.network "private_network",
+      ip: "192.168.56.21",
       libvirt__network_name: "vagrant-private",
       libvirt__dhcp_enabled: false,
       libvirt__forward_mode: "nat",
       auto_config: false,
-      mac: "525400111111"
-    n.vm.network "forwarded_port", guest: 8081, host: 8081, auto_correct: true
-    n.vm.network "forwarded_port", guest: 8087, host: 8087, auto_correct: true
+      mac: "525400222221"
+    api.vm.network "forwarded_port", guest: 8082, host: 8082
   end
 
-
-  config.vm.define "node02" do |n|
-    n.vm.hostname = "node02"
-    n.vm.network "private_network",
-      ip: "192.168.56.12",
+  # 3. manager
+  config.vm.define "manager2" do |mgr|
+    mgr.vm.hostname = "manager2"
+    mgr.vm.network "private_network",
+      ip: "192.168.56.22",
       libvirt__network_name: "vagrant-private",
       libvirt__dhcp_enabled: false,
       libvirt__forward_mode: "nat",
       auto_config: false,
-      mac: "525400111112"
-    n.vm.network "forwarded_port", guest: 80,   host: 8080, auto_correct: true
-    n.vm.network "forwarded_port", guest: 5432, host: 5432, auto_correct: true
+      mac: "525400222222"
+    mgr.vm.provision "shell", inline: <<-SHELL
+      apt-get update && apt-get install -y ansible
+    SHELL
+  end
+
+  # 4. db
+  config.vm.define "db" do |db|
+    db.vm.hostname = "db"
+    db.vm.network "private_network",
+      ip: "192.168.56.23",
+      libvirt__network_name: "vagrant-private",
+      libvirt__dhcp_enabled: false,
+      libvirt__forward_mode: "nat",
+      auto_config: false,
+      mac: "525400222223"
   end
 end
+ENDVAGRANT

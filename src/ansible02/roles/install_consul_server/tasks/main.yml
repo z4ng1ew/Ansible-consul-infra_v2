@@ -1,0 +1,30 @@
+---
+- name: Install Consul .deb package
+  apt:
+    deb: "/tmp/{{ consul_deb_name }}"
+  vars:
+    consul_deb_name: consul_1.20.1-1_amd64.deb  # подставь свою версию
+
+- name: Create Consul data directory
+  file:
+    path: /opt/consul/data
+    state: directory
+    owner: consul
+    group: consul
+    mode: '0755'
+
+- name: Copy consul_server.hcl
+  copy:
+    src: "{{ playbook_dir }}/../consul01/consul_server.hcl"
+    dest: /etc/consul.d/consul.hcl
+    owner: consul
+    group: consul
+    mode: '0644'
+  notify: restart consul
+
+- name: Enable and start Consul
+  systemd:
+    name: consul
+    state: started
+    enabled: yes
+    daemon_reload: yes
