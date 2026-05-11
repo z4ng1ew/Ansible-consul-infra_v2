@@ -711,11 +711,19 @@ log_level = "INFO"
 ![alt text](<imd/2/image copy 10.png>)
 **Выполнение роли install_hotels_service — установка JDK 8, настройка глобальных переменных окружения и создание директории приложения**
 
-Здесь наглядно видно, что роль:
+- Здесь наглядно видно, что роль:
 
     1) Установила JDK 8
     2) Создала все глобальные переменные окружения (JAVA_HOME, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, SERVER_PORT)
     3) Создала директорию приложения
+
+- 403 Forbidden — это хорошо! Это значит, что:
+
+    1) JAR-файл запущен (иначе было бы "Connection refused")
+    2) Spring Boot приложение работает
+    3) Просто требуется авторизация (это нормально для CRUD API)
+
+
 
 ```
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ tail -20 /tmp/ansible-part2-v3.log
