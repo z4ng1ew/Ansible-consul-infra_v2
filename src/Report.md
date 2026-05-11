@@ -548,6 +548,8 @@ log_level = "INFO"
 
 
 ![alt text](<imd/2/image copy 12.png>)
+**# 1. Сервис запущен**
+
 ```
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ cat playbook.yml 
 ---
@@ -581,14 +583,86 @@ log_level = "INFO"
 2) Роль install_consul_server устанавливает сервер Consul.
 3) Роль install_consul_client устанавливает клиент Consul.
 4) Роль install_db устанавливает Postgres и создает базу данных hotels_db.
+
+
+
+
 5) Роль install_hotels_service открывает роль jdk-8-jdk, копирует исходный код сервиса, создает глобальные среды systems, запускает собранный JAR-файл с помощью команды.
 
 
 
 
 
+![alt text](<imd/2/image copy 15.png>)
+**# 2. API отвечает (403 = работает, но требует авторизацию)**
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh api2 "sudo systemctl status hotel-service --no-pager | head -8"
+● hotel-service.service - Hotel Service
+     Loaded: loaded (/etc/systemd/system/hotel-service.service; enabled; vendor preset: enabled)
+     Active: active (running) since Mon 2026-05-11 16:30:20 UTC; 1h 47min ago
+   Main PID: 5463 (java)
+      Tasks: 29 (limit: 2307)
+     Memory: 335.9M
+        CPU: 26.622s
+     CGroup: /system.slice/hotel-service.service
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh api2 "curl -sv http://localhost:8082/api/v1/hotels 2>&1 | grep -E 'HTTP|status|Forbidden'"
+> GET /api/v1/hotels HTTP/1.1
+< HTTP/1.1 403 
+{"timestamp":"2026-05-11T18:18:00.165+00:00","status":403,"error":"Forbidden","message":"","path":"/api/v1/hotels"}
+```
 
 
+
+
+
+
+
+![alt text](<imd/2/image copy 14.png>)
+**3. Таблицы созданы через data.sql**
+
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh db2 "sudo -u postgres psql -d hotels_db -c '\dt'"
+could not change directory to "/home/vagrant": Permission denied
+            List of relations
+ Schema |   Name    | Type  |    Owner    
+--------+-----------+-------+-------------
+ public | cities    | table | hotels_user
+ public | countries | table | hotels_user
+ public | hotels    | table | hotels_user
+(3 rows)
+
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
+could not change directory to "/home/vagrant": Permission denied
+ hotel_id |  address  | cost |              hotel_uid               | hotel_name | rooms | city_id 
+----------+-----------+------+--------------------------------------+------------+-------+---------
+     1000 | Address 1 | 2000 | 9d05ba36-bf8d-11eb-8529-0242ac130003 | Hotel 1    |   100 |    1000
+     2000 | Address 2 | 3000 | ab84f4e6-bf8d-11eb-8529-0242ac130003 | Hotel 2    |   200 |    2000
+     3000 | Address 3 | 5000 | b0698102-bf8d-11eb-8529-0242ac130003 | Hotel 3    |   250 |    3000
+(3 rows)
+
+```
+
+
+
+
+
+![alt text](<imd/2/image copy 13.png>)
+**Consul видит все сервисы**
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh consul_server "consul members"
+Node           Address             Status  Type    Build   Protocol  DC   Partition  Segment
+consul-server  192.168.56.20:8301  alive   server  1.22.7  2         dc1  default    <all>
+api            192.168.56.21:8301  alive   client  1.22.7  2         dc1  default    <default>
+db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  default    <default>
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh consul_server "consul catalog services"
+api
+consul
+db
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ 
+```
 
 
 
