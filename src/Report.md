@@ -863,7 +863,7 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 
-4) Роль install_db устанавливает Postgres и создает базу данных hotels_db.
+## 4) Роль install_db устанавливает Postgres и создает базу данных hotels_db.
 
 [text](ansible02/roles/install_db/tasks/main.yml)
 ```
@@ -926,16 +926,16 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 ```
 
 
-5) Роль install_hotels_service открывает роль jdk-8-jdk, копирует исходный код сервиса, создает глобальные среды systems, запускает собранный JAR-файл с помощью команды.
+## 5) Роль install_hotels_service открывает роль jdk-8-jdk, копирует исходный код сервиса, создает глобальные среды systems, запускает собранный JAR-файл с помощью команды.
 
 [text](ansible02/roles/install_hotels_service/tasks/main.yml)
 
 
 ```
 ---
-- name: Install JDK 8
+- name: Install OpenJDK 21
   apt:
-    name: openjdk-8-jdk
+    name: openjdk-21-jdk
     state: present
     update_cache: yes
 
@@ -945,26 +945,25 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
     regexp: "^{{ item.key }}="
     line: "{{ item.key }}={{ item.value }}"
   loop:
-    - { key: "JAVA_HOME", value: "/usr/lib/jvm/java-8-openjdk-amd64" }
-    - { key: "POSTGRES_HOST", value: "192.168.56.23" }
+    - { key: "JAVA_HOME", value: "/usr/lib/jvm/java-21-openjdk-amd64" }
+    - { key: "POSTGRES_HOST", value: "127.0.0.1" }
     - { key: "POSTGRES_PORT", value: "5432" }
     - { key: "POSTGRES_DB", value: "hotels_db" }
     - { key: "POSTGRES_USER", value: "hotels_user" }
     - { key: "POSTGRES_PASSWORD", value: "hotels_pass" }
     - { key: "SERVER_PORT", value: "8082" }
 
-- name: Create app directory
+- name: Create application directories
   file:
-    path: /opt/hotels-service
+    path: /opt/hotel-service/hotel-service/target
     state: directory
     mode: '0755'
 
 - name: Copy hotel-service JAR
   copy:
     src: hotel-service.jar
-    dest: /opt/hotels-service/hotel-service.jar
+    dest: /opt/hotel-service/hotel-service/target/hotel-service.jar
     mode: '0755'
-  notify: restart hotel-service
 
 - name: Create systemd service for hotel-service
   copy:
@@ -975,10 +974,10 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
       [Service]
       Type=simple
       EnvironmentFile=/etc/environment
-      ExecStart=/usr/lib/jvm/java-8-openjdk-amd64/bin/java -jar /opt/hotels-service/hotel-service.jar
+      ExecStart=java -jar /opt/hotel-service/hotel-service/target/hotel-service.jar
       Restart=on-failure
       RestartSec=10
-      WorkingDirectory=/opt/hotels-service
+      WorkingDirectory=/opt/hotel-service
       [Install]
       WantedBy=multi-user.target
     dest: /etc/systemd/system/hotel-service.service
@@ -999,7 +998,7 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 ```
 ---
-- name: Install JDK 8
+- name: Install OpenJDK 8
   apt:
     name: openjdk-21-jdk
     state: present
@@ -1011,26 +1010,25 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
     regexp: "^{{ item.key }}="
     line: "{{ item.key }}={{ item.value }}"
   loop:
-    - { key: "JAVA_HOME", value: "/usr/lib/jvm/java-8-openjdk-amd64" }
-    - { key: "POSTGRES_HOST", value: "192.168.56.23" }
+    - { key: "JAVA_HOME", value: "/usr/lib/jvm/java-21-openjdk-amd64" }
+    - { key: "POSTGRES_HOST", value: "127.0.0.1" }
     - { key: "POSTGRES_PORT", value: "5432" }
     - { key: "POSTGRES_DB", value: "hotels_db" }
     - { key: "POSTGRES_USER", value: "hotels_user" }
     - { key: "POSTGRES_PASSWORD", value: "hotels_pass" }
     - { key: "SERVER_PORT", value: "8082" }
 
-- name: Create app directory
+- name: Create application directories
   file:
-    path: /opt/hotels-service
+    path: /opt/hotel-service/hotel-service/target
     state: directory
     mode: '0755'
 
 - name: Copy hotel-service JAR
   copy:
     src: hotel-service.jar
-    dest: /opt/hotels-service/hotel-service.jar
+    dest: /opt/hotel-service/hotel-service/target/hotel-service.jar
     mode: '0755'
-  notify: restart hotel-service
 
 - name: Create systemd service for hotel-service
   copy:
@@ -1041,10 +1039,10 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
       [Service]
       Type=simple
       EnvironmentFile=/etc/environment
-      ExecStart=/usr/lib/jvm/java-8-openjdk-amd64/bin/java -jar /opt/hotels-service/hotel-service.jar
+      ExecStart=java -jar /opt/hotel-service/hotel-service/target/hotel-service.jar
       Restart=on-failure
       RestartSec=10
-      WorkingDirectory=/opt/hotels-service
+      WorkingDirectory=/opt/hotel-service
       [Install]
       WantedBy=multi-user.target
     dest: /etc/systemd/system/hotel-service.service
@@ -1059,6 +1057,37 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
     daemon_reload: yes
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
