@@ -595,6 +595,7 @@ log_level = "INFO"
 
 ## 2) Роль install_consul_server устанавливает сервер Consul.
 
+[text](ansible02/roles/install_consul_server/tasks/main.yml)
 ```
 ---
 - name: Install unzip
@@ -708,7 +709,13 @@ log_level = "INFO"
 
 
 ![alt text](<imd/2/image copy 10.png>)
+**Выполнение роли install_hotels_service — установка JDK 8, настройка глобальных переменных окружения и создание директории приложения**
 
+Здесь наглядно видно, что роль:
+
+    1) Установила JDK 8
+    2) Создала все глобальные переменные окружения (JAVA_HOME, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, SERVER_PORT)
+    3) Создала директорию приложения
 
 ```
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ tail -20 /tmp/ansible-part2-v3.log
@@ -739,20 +746,10 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 
-3) Роль install_consul_client устанавливает клиент Consul.
-4) Роль install_db устанавливает Postgres и создает базу данных hotels_db.
-
-
-
-
-5) Роль install_hotels_service открывает роль jdk-8-jdk, копирует исходный код сервиса, создает глобальные среды systems, запускает собранный JAR-файл с помощью команды.
-
-
-
-
 
 ![alt text](<imd/2/image copy 15.png>)
 **# 2. API отвечает (403 = работает, но требует авторизацию)**
+**Сервис hotel-service запущен и отвечает на запросы (статус active running, HTTP 403 подтверждает работу API)**
 
 ```
 (base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh api2 "sudo systemctl status hotel-service --no-pager | head -8"
@@ -769,6 +766,20 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 < HTTP/1.1 403 
 {"timestamp":"2026-05-11T18:18:00.165+00:00","status":403,"error":"Forbidden","message":"","path":"/api/v1/hotels"}
 ```
+
+
+
+3) Роль install_consul_client устанавливает клиент Consul.
+4) Роль install_db устанавливает Postgres и создает базу данных hotels_db.
+
+
+
+
+5) Роль install_hotels_service открывает роль jdk-8-jdk, копирует исходный код сервиса, создает глобальные среды systems, запускает собранный JAR-файл с помощью команды.
+
+
+
+
 
 
 
