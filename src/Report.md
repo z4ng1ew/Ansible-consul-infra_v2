@@ -558,7 +558,7 @@ log_level = "INFO"
 
 
 
-2. Создать с помощью Vagrant четыре машины: consul_server, api, manager и db.
+## 2. Создать с помощью Vagrant четыре машины: consul_server, api, manager и db.
    - Прокинуть порт 8082 с api на локальную машину для доступа к пока еще не развернутому api.
    - Прокинуть порт 8500 с consul_server для доступа к ui consul. 
 
@@ -675,6 +675,53 @@ EOF
 end
 
 ```
+
+
+
+
+![alt text](<imd/2/image copy 3.png>)
+**все 4 виртуалки работают**
+
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ vagrant status
+Current machine states:
+
+consul_server             running (libvirt)
+api                       running (libvirt)
+manager2                  running (libvirt)
+db                        running (libvirt)
+
+This environment represents multiple VMs. The VMs are all listed
+above with their current state. For more information about a specific
+VM, run `vagrant status NAME`.
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
+```
+
+
+
+![alt text](<imd/1/image copy 30.png>)
+**Cкриншот из менеджера виртальных машин Linux**
+**4 запущено, 3 остановленны**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1284,33 +1331,6 @@ db
 
 
 
-![alt text](<imd/2/image copy 3.png>)
-**все 4 виртуалки работают**
-
-
-```
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ vagrant status
-Current machine states:
-
-consul_server             running (libvirt)
-api                       running (libvirt)
-manager2                  running (libvirt)
-db                        running (libvirt)
-
-This environment represents multiple VMs. The VMs are all listed
-above with their current state. For more information about a specific
-VM, run `vagrant status NAME`.
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
-```
-
-
-
-![alt text](<imd/1/image copy 30.png>)
-**Cкриншот из менеджера виртальных машин Linux**
-**4 запущено, 3 остановленны**
-
-
-
 
 
 ![alt text](<imd/2/image copy.png>)
@@ -1536,10 +1556,6 @@ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 
 
-
-2. Создать с помощью Vagrant четыре машины: consul_server, api, manager и db.
-   - Прокинуть порт 8082 с api на локальную машину для доступа к пока еще не развернутому api.
-   - Прокинуть порт 8500 с consul_server для доступа к ui consul. 
 
 3. Написать плейбук для ansible и четыре роли: 
    - install_consul_server, которая:
