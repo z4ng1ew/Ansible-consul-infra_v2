@@ -777,20 +777,288 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 
-3) Роль install_consul_client устанавливает клиент Consul.
+## 3) Роль install_consul_client устанавливает клиент Consul.
+
+[text](ansible02/roles/install_consul_client/tasks/main.yml)
+
+
+```
+---
+- name: Install unzip
+  apt:
+    name: unzip
+    state: present
+    update_cache: yes
+
+- name: Copy Consul zip
+  copy:
+    src: consul.zip
+    dest: /tmp/consul.zip
+
+- name: Unzip Consul
+  unarchive:
+    src: /tmp/consul.zip
+    dest: /usr/local/bin/
+    remote_src: yes
+    mode: '0755'
+
+- name: Create consul user
+  user:
+    name: consul
+    system: yes
+    shell: /bin/false
+    home: /etc/consul.d
+    create_home: no
+
+- name: Create Consul directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: consul
+    group: consul
+    mode: '0755'
+  loop:
+    - /opt/consul/data
+    - /etc/consul.d
+
+- name: Copy Consul client config
+  template:
+    src: consul_client.hcl.j2
+    dest: /etc/consul.d/consul.hcl
+    owner: consul
+    group: consul
+    mode: '0644'
+  notify: restart consul
+
+- name: Create Consul systemd service
+  copy:
+    content: |
+      [Unit]
+      Description=Consul Agent
+      After=network-online.target
+      Wants=network-online.target
+      [Service]
+      User=consul
+      Group=consul
+      ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+      ExecReload=/bin/kill -HUP $MAINPID
+      KillSignal=SIGINT
+      Restart=on-failure
+      RestartSec=5
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/consul.service
+    mode: '0644'
+  notify: restart consul
+
+- name: Enable and start Consul
+  systemd:
+    name: consul
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+```
+
+
+
+
 4) Роль install_db устанавливает Postgres и создает базу данных hotels_db.
 
+[text](ansible02/roles/install_db/tasks/main.yml)
+```
+---
+- name: Install PostgreSQL
+  apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+      - python3-psycopg2
+      - acl
+    state: present
+    update_cache: yes
 
+- name: Ensure PostgreSQL is started
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Configure PostgreSQL to listen on all interfaces
+  lineinfile:
+    path: /etc/postgresql/14/main/postgresql.conf
+    regexp: "^#?listen_addresses"
+    line: "listen_addresses = '*'"
+  notify: restart postgresql
+
+- name: Allow remote connections in pg_hba
+  lineinfile:
+    path: /etc/postgresql/14/main/pg_hba.conf
+    line: "host    all    all    192.168.56.0/24    md5"
+  notify: restart postgresql
+
+- name: Flush handlers
+  meta: flush_handlers
+
+- name: Create hotels_db database with correct owner
+  become_user: postgres
+  postgresql_db:
+    name: hotels_db
+    owner: hotels_user
+    state: present
+
+- name: Create db user
+  become_user: postgres
+  postgresql_user:
+    name: hotels_user
+    password: hotels_pass
+    state: present
+    role_attr_flags: CREATEDB
+
+- name: Grant all privileges
+  become_user: postgres
+  postgresql_privs:
+    db: hotels_db
+    role: hotels_user
+    type: database
+    privs: ALL
+
+```
 
 
 5) Роль install_hotels_service открывает роль jdk-8-jdk, копирует исходный код сервиса, создает глобальные среды systems, запускает собранный JAR-файл с помощью команды.
 
+[text](ansible02/roles/install_hotels_service/tasks/main.yml)
 
 
+```
+---
+- name: Install JDK 8
+  apt:
+    name: openjdk-8-jdk
+    state: present
+    update_cache: yes
+
+- name: Set global environment variables
+  lineinfile:
+    path: /etc/environment
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  loop:
+    - { key: "JAVA_HOME", value: "/usr/lib/jvm/java-8-openjdk-amd64" }
+    - { key: "POSTGRES_HOST", value: "192.168.56.23" }
+    - { key: "POSTGRES_PORT", value: "5432" }
+    - { key: "POSTGRES_DB", value: "hotels_db" }
+    - { key: "POSTGRES_USER", value: "hotels_user" }
+    - { key: "POSTGRES_PASSWORD", value: "hotels_pass" }
+    - { key: "SERVER_PORT", value: "8082" }
+
+- name: Create app directory
+  file:
+    path: /opt/hotels-service
+    state: directory
+    mode: '0755'
+
+- name: Copy hotel-service JAR
+  copy:
+    src: hotel-service.jar
+    dest: /opt/hotels-service/hotel-service.jar
+    mode: '0755'
+  notify: restart hotel-service
+
+- name: Create systemd service for hotel-service
+  copy:
+    content: |
+      [Unit]
+      Description=Hotel Service
+      After=network.target consul.service
+      [Service]
+      Type=simple
+      EnvironmentFile=/etc/environment
+      ExecStart=/usr/lib/jvm/java-8-openjdk-amd64/bin/java -jar /opt/hotels-service/hotel-service.jar
+      Restart=on-failure
+      RestartSec=10
+      WorkingDirectory=/opt/hotels-service
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/hotel-service.service
+    mode: '0644'
+  notify: restart hotel-service
+
+- name: Enable and start hotel-service
+  systemd:
+    name: hotel-service
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+```
 
 
+# Версия № 2
 
+```
+---
+- name: Install JDK 8
+  apt:
+    name: openjdk-21-jdk
+    state: present
+    update_cache: yes
 
+- name: Set global environment variables
+  lineinfile:
+    path: /etc/environment
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  loop:
+    - { key: "JAVA_HOME", value: "/usr/lib/jvm/java-8-openjdk-amd64" }
+    - { key: "POSTGRES_HOST", value: "192.168.56.23" }
+    - { key: "POSTGRES_PORT", value: "5432" }
+    - { key: "POSTGRES_DB", value: "hotels_db" }
+    - { key: "POSTGRES_USER", value: "hotels_user" }
+    - { key: "POSTGRES_PASSWORD", value: "hotels_pass" }
+    - { key: "SERVER_PORT", value: "8082" }
+
+- name: Create app directory
+  file:
+    path: /opt/hotels-service
+    state: directory
+    mode: '0755'
+
+- name: Copy hotel-service JAR
+  copy:
+    src: hotel-service.jar
+    dest: /opt/hotels-service/hotel-service.jar
+    mode: '0755'
+  notify: restart hotel-service
+
+- name: Create systemd service for hotel-service
+  copy:
+    content: |
+      [Unit]
+      Description=Hotel Service
+      After=network.target consul.service
+      [Service]
+      Type=simple
+      EnvironmentFile=/etc/environment
+      ExecStart=/usr/lib/jvm/java-8-openjdk-amd64/bin/java -jar /opt/hotels-service/hotel-service.jar
+      Restart=on-failure
+      RestartSec=10
+      WorkingDirectory=/opt/hotels-service
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/hotel-service.service
+    mode: '0644'
+  notify: restart hotel-service
+
+- name: Enable and start hotel-service
+  systemd:
+    name: hotel-service
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+```
 
 
 
