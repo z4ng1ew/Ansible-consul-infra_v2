@@ -383,6 +383,11 @@ Apache is running on node02 (192.168.56.12)
 
 
 
+##  Перенёс HCL в src/consul01
+
+![alt text](imd/2/image.png)
+**Перенести HCL в src/consul01 (это требование задания)**
+
 
 ## 4) Все файлы Ansible находятся в папке src\ansible01.
 
@@ -435,10 +440,6 @@ Apache is running on node02 (192.168.56.12)
 
 
 
-## Перенёс HCL в src/consul01
-
-![alt text](imd/2/image.png)
-**Перенести HCL в src/consul01 (это требование задания)**
 
 
 
@@ -472,10 +473,9 @@ Apache is running on node02 (192.168.56.12)
 
 
 
+  ## 3. Конфигурационные файлы Consul
 
-   3. Конфигурационные файлы Consul
-
-1) Существуют конфигурационные файлы для сервера и клиента, в которых advertise_addr указывает сетевой интерфейс, направленный во внутреннюю сеть Vagrant.
+## 1) Существуют конфигурационные файлы для сервера и клиента, в которых advertise_addr указывает сетевой интерфейс, направленный во внутреннюю сеть Vagrant.
 
 
 
@@ -542,9 +542,9 @@ log_level = "INFO"
 
 
 
-    4. Роли Consul
+  ## 4. Роли Consul
 
-1) Плейбук в src\ansible02 написан для запуска ролей: install_consul_server, install_consul_client, install_db и install_hotels_service.
+## 1) Плейбук в src\ansible02 написан для запуска ролей: install_consul_server, install_consul_client, install_db и install_hotels_service.
 
 
 ![alt text](<imd/2/image copy 12.png>)
@@ -580,7 +580,145 @@ log_level = "INFO"
 ```
 
 
-2) Роль install_consul_server устанавливает сервер Consul.
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 2) Роль install_consul_server устанавливает сервер Consul.
+
+```
+---
+- name: Install unzip
+  apt:
+    name: unzip
+    state: present
+    update_cache: yes
+
+- name: Copy Consul zip
+  copy:
+    src: consul.zip
+    dest: /tmp/consul.zip
+
+- name: Unzip Consul
+  unarchive:
+    src: /tmp/consul.zip
+    dest: /usr/local/bin/
+    remote_src: yes
+    mode: '0755'
+
+- name: Create consul user
+  user:
+    name: consul
+    system: yes
+    shell: /bin/false
+    home: /etc/consul.d
+    create_home: no
+
+- name: Create Consul directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: consul
+    group: consul
+    mode: '0755'
+  loop:
+    - /opt/consul/data
+    - /etc/consul.d
+
+- name: Copy Consul server config
+  copy:
+    content: |
+      datacenter       = "dc1"
+      node_name        = "consul-server"
+      server           = true
+      bootstrap_expect = 1
+      bind_addr        = "0.0.0.0"
+      advertise_addr   = "192.168.56.20"
+      client_addr      = "0.0.0.0"
+      ui_config {
+        enabled = true
+      }
+      data_dir  = "/opt/consul/data"
+      log_level = "INFO"
+    dest: /etc/consul.d/consul.hcl
+    owner: consul
+    group: consul
+    mode: '0644'
+  notify: restart consul
+
+- name: Create Consul systemd service
+  copy:
+    content: |
+      [Unit]
+      Description=Consul Agent
+      After=network-online.target
+      Wants=network-online.target
+      [Service]
+      User=consul
+      Group=consul
+      ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+      ExecReload=/bin/kill -HUP $MAINPID
+      KillSignal=SIGINT
+      Restart=on-failure
+      RestartSec=5
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/consul.service
+    mode: '0644'
+  notify: restart consul
+
+- name: Enable and start Consul
+  systemd:
+    name: consul
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+```
+
+
+
+![alt text](<imd/2/image copy 10.png>)
+
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ tail -20 /tmp/ansible-part2-v3.log
+TASK [install_hotels_service : Install JDK 8] **********************************
+ok: [api]
+
+TASK [install_hotels_service : Set global environment variables] ***************
+ok: [api] => (item={'key': 'JAVA_HOME', 'value': '/usr/lib/jvm/java-8-openjdk-amd64'})
+ok: [api] => (item={'key': 'DB_HOST', 'value': 'db.service.consul'})
+ok: [api] => (item={'key': 'DB_PORT', 'value': '5432'})
+ok: [api] => (item={'key': 'DB_NAME', 'value': 'hotels_db'})
+ok: [api] => (item={'key': 'DB_USER', 'value': 'hotels_user'})
+ok: [api] => (item={'key': 'DB_PASS', 'value': 'hotels_pass'})
+ok: [api] => (item={'key': 'SERVER_PORT', 'value': '8082'})
+
+TASK [install_hotels_service : Create app directory] ***************************
+ok: [api]
+
+PLAY RECAP *********************************************************************
+api                        : ok=13   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+consul_server              : ok=9    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+db                         : ok=18   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
+```
+
+
+
+
+
 3) Роль install_consul_client устанавливает клиент Consul.
 4) Роль install_db устанавливает Postgres и создает базу данных hotels_db.
 
@@ -806,35 +944,6 @@ ssh api2 "dig @127.0.0.1 -p 8600 db.service.consul +short"
 
 
 
-
-
-
-
-![alt text](<imd/2/image copy 10.png>)
-```
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ tail -20 /tmp/ansible-part2-v3.log
-TASK [install_hotels_service : Install JDK 8] **********************************
-ok: [api]
-
-TASK [install_hotels_service : Set global environment variables] ***************
-ok: [api] => (item={'key': 'JAVA_HOME', 'value': '/usr/lib/jvm/java-8-openjdk-amd64'})
-ok: [api] => (item={'key': 'DB_HOST', 'value': 'db.service.consul'})
-ok: [api] => (item={'key': 'DB_PORT', 'value': '5432'})
-ok: [api] => (item={'key': 'DB_NAME', 'value': 'hotels_db'})
-ok: [api] => (item={'key': 'DB_USER', 'value': 'hotels_user'})
-ok: [api] => (item={'key': 'DB_PASS', 'value': 'hotels_pass'})
-ok: [api] => (item={'key': 'SERVER_PORT', 'value': '8082'})
-
-TASK [install_hotels_service : Create app directory] ***************************
-ok: [api]
-
-PLAY RECAP *********************************************************************
-api                        : ok=13   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
-consul_server              : ok=9    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
-db                         : ok=18   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
-
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
-```
 
 
 
