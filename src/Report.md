@@ -373,6 +373,13 @@ Apache is running on node02 (192.168.56.12)
 
 
 ![alt text](<imd/1/image copy 28.png>)
+**docker ps - состояние  UP**
+
+
+
+
+
+
 
 
 
@@ -428,6 +435,37 @@ Apache is running on node02 (192.168.56.12)
 
 
 
+## Перенёс HCL в src/consul01
+
+![alt text](imd/2/image.png)
+**Перенести HCL в src/consul01 (это требование задания)**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -443,7 +481,57 @@ Apache is running on node02 (192.168.56.12)
 
 
 
+![alt text](<imd/2/image copy 8.png>)
+**Consul конфиг**
 
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ cat ~/Ansible-consul-infra/src/consul01/consul_server.hcl
+datacenter = "dc1"
+node_name  = "consul-server"
+server     = true
+
+bootstrap_expect = 1
+
+bind_addr      = "0.0.0.0"
+advertise_addr = "192.168.56.20"
+client_addr    = "0.0.0.0"
+
+ui_config {
+  enabled = true
+}
+
+data_dir = "/opt/consul/data"
+
+log_level = "INFO"
+```
+
+
+
+
+
+
+![alt text](<imd/2/image copy 9.png>)
+**Consul конфиг**
+
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ cat ~/Ansible-consul-infra/src/consul01/consul_client.hcl
+datacenter = "dc1"
+node_name  = "consul-client"
+server     = false
+
+bind_addr      = "0.0.0.0"
+advertise_addr = "192.168.56.21"
+client_addr    = "0.0.0.0"
+
+data_dir = "/opt/consul/data"
+
+retry_join = ["192.168.56.20"]
+
+log_level = "INFO"
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
+```
 
 
 
@@ -455,6 +543,39 @@ Apache is running on node02 (192.168.56.12)
     4. Роли Consul
 
 1) Плейбук в src\ansible02 написан для запуска ролей: install_consul_server, install_consul_client, install_db и install_hotels_service.
+
+
+![alt text](<imd/2/image copy 12.png>)
+```
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ cat playbook.yml 
+---
+- name: Install Consul server
+  hosts: consul_servers
+  become: yes
+  roles:
+    - install_consul_server
+
+- name: Install Consul clients and services
+  hosts: consul_clients
+  become: yes
+  roles:
+    - install_consul_client
+
+- name: Install PostgreSQL with hotels_db
+  hosts: db_servers
+  become: yes
+  roles:
+    - install_db
+
+- name: Install hotels-service
+  hosts: api_servers
+  become: yes
+  roles:
+    - install_hotels_service
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
+```
+
+
 2) Роль install_consul_server устанавливает сервер Consul.
 3) Роль install_consul_client устанавливает клиент Consul.
 4) Роль install_db устанавливает Postgres и создает базу данных hotels_db.
@@ -475,7 +596,7 @@ Apache is running on node02 (192.168.56.12)
 
 
 ![alt text](<imd/2/image copy 3.png>)
-**все 4 виртуалки работаю**
+**все 4 виртуалки работают**
 
 
 ```
@@ -495,6 +616,9 @@ VM, run `vagrant status NAME`.
 
 
 
+![alt text](<imd/1/image copy 30.png>)
+**Cкриншот из менеджера виртальных машин Linux**
+**4 запущено, 3 остановленны**
 
 
 
@@ -511,12 +635,6 @@ VM, run `vagrant status NAME`.
 
 
 
-
-
-
-
-![alt text](imd/2/image.png)
-**Перенести HCL в src/consul01 (это требование чек-листа 5)**
 
 
 
@@ -611,58 +729,6 @@ ssh api2 "dig @127.0.0.1 -p 8600 db.service.consul +short"
 
 
 
-
-![alt text](<imd/2/image copy 8.png>)
-**Consul конфиг**
-
-
-```
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ cat ~/Ansible-consul-infra/src/consul01/consul_server.hcl
-datacenter = "dc1"
-node_name  = "consul-server"
-server     = true
-
-bootstrap_expect = 1
-
-bind_addr      = "0.0.0.0"
-advertise_addr = "192.168.56.20"
-client_addr    = "0.0.0.0"
-
-ui_config {
-  enabled = true
-}
-
-data_dir = "/opt/consul/data"
-
-log_level = "INFO"
-```
-
-
-
-
-
-
-![alt text](<imd/2/image copy 9.png>)
-**Consul конфиг**
-
-
-```
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ cat ~/Ansible-consul-infra/src/consul01/consul_client.hcl
-datacenter = "dc1"
-node_name  = "consul-client"
-server     = false
-
-bind_addr      = "0.0.0.0"
-advertise_addr = "192.168.56.21"
-client_addr    = "0.0.0.0"
-
-data_dir = "/opt/consul/data"
-
-retry_join = ["192.168.56.20"]
-
-log_level = "INFO"
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
-```
 
 
 

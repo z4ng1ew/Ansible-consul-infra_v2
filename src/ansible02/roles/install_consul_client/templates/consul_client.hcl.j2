@@ -1,0 +1,9 @@
+datacenter     = "dc1"
+node_name      = "{{ inventory_hostname }}"
+server         = false
+bind_addr      = "0.0.0.0"
+advertise_addr = "{{ ansible_host }}"
+client_addr    = "0.0.0.0"
+data_dir       = "/opt/consul/data"
+retry_join     = ["192.168.56.20"]
+log_level      = "INFO"

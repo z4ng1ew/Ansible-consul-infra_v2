@@ -1,24 +1,24 @@
 ---
 - name: Install Consul server
-  hosts: consul_server
+  hosts: consul_servers
   become: yes
   roles:
     - install_consul_server
 
-- name: Install Consul clients
-  hosts: api,db
+- name: Install Consul clients and services
+  hosts: consul_clients
   become: yes
   roles:
     - install_consul_client
 
-- name: Install PostgreSQL database with hotels_db
-  hosts: db
+- name: Install PostgreSQL with hotels_db
+  hosts: db_servers
   become: yes
   roles:
     - install_db
 
 - name: Install hotels-service
-  hosts: api
+  hosts: api_servers
   become: yes
   roles:
     - install_hotels_service

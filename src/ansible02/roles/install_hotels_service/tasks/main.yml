@@ -1,0 +1,26 @@
+---
+- name: Install JDK 8
+  apt:
+    name: openjdk-8-jdk
+    state: present
+    update_cache: yes
+
+- name: Set global environment variables
+  lineinfile:
+    path: /etc/environment
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  loop:
+    - { key: "JAVA_HOME", value: "/usr/lib/jvm/java-8-openjdk-amd64" }
+    - { key: "DB_HOST", value: "db.service.consul" }
+    - { key: "DB_PORT", value: "5432" }
+    - { key: "DB_NAME", value: "hotels_db" }
+    - { key: "DB_USER", value: "hotels_user" }
+    - { key: "DB_PASS", value: "hotels_pass" }
+    - { key: "SERVER_PORT", value: "8082" }
+
+- name: Create app directory
+  file:
+    path: /opt/hotels-service
+    state: directory
+    mode: '0755'

@@ -1,0 +1,77 @@
+---
+- name: Install PostgreSQL
+  apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+      - python3-psycopg2
+      - acl
+    state: present
+    update_cache: yes
+
+- name: Ensure PostgreSQL is started
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Configure PostgreSQL to listen on all interfaces
+  lineinfile:
+    path: /etc/postgresql/14/main/postgresql.conf
+    regexp: "^#?listen_addresses"
+    line: "listen_addresses = '*'"
+  notify: restart postgresql
+
+- name: Allow remote connections in pg_hba
+  lineinfile:
+    path: /etc/postgresql/14/main/pg_hba.conf
+    line: "host    all    all    192.168.56.0/24    md5"
+  notify: restart postgresql
+
+- name: Flush handlers
+  meta: flush_handlers
+
+- name: Create hotels_db database
+  become_user: postgres
+  postgresql_db:
+    name: hotels_db
+    state: present
+
+- name: Create db user
+  become_user: postgres
+  postgresql_user:
+    name: hotels_user
+    password: hotels_pass
+    db: hotels_db
+    priv: ALL
+    state: present
+
+- name: Create hotels table and insert data
+  become_user: postgres
+  postgresql_query:
+    db: hotels_db
+    query: |
+      CREATE TABLE IF NOT EXISTS hotels (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        city VARCHAR(255) NOT NULL,
+        price_per_night INTEGER NOT NULL
+      );
+      INSERT INTO hotels (name, city, price_per_night)
+      SELECT 'Grand Hotel', 'Moscow', 5000
+      WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE name = 'Grand Hotel');
+      INSERT INTO hotels (name, city, price_per_night)
+      SELECT 'Sea View Resort', 'Sochi', 8000
+      WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE name = 'Sea View Resort');
+      INSERT INTO hotels (name, city, price_per_night)
+      SELECT 'Mountain Lodge', 'Kazan', 3500
+      WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE name = 'Mountain Lodge');
+
+- name: Grant privileges to hotels_user
+  become_user: postgres
+  postgresql_privs:
+    db: hotels_db
+    role: hotels_user
+    type: table
+    objs: hotels
+    privs: SELECT,INSERT,UPDATE,DELETE

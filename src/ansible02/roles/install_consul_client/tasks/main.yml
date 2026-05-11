@@ -1,0 +1,74 @@
+---
+- name: Install unzip
+  apt:
+    name: unzip
+    state: present
+    update_cache: yes
+
+- name: Copy Consul zip
+  copy:
+    src: consul.zip
+    dest: /tmp/consul.zip
+
+- name: Unzip Consul
+  unarchive:
+    src: /tmp/consul.zip
+    dest: /usr/local/bin/
+    remote_src: yes
+    mode: '0755'
+
+- name: Create consul user
+  user:
+    name: consul
+    system: yes
+    shell: /bin/false
+    home: /etc/consul.d
+    create_home: no
+
+- name: Create Consul directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: consul
+    group: consul
+    mode: '0755'
+  loop:
+    - /opt/consul/data
+    - /etc/consul.d
+
+- name: Copy Consul client config
+  template:
+    src: consul_client.hcl.j2
+    dest: /etc/consul.d/consul.hcl
+    owner: consul
+    group: consul
+    mode: '0644'
+  notify: restart consul
+
+- name: Create Consul systemd service
+  copy:
+    content: |
+      [Unit]
+      Description=Consul Agent
+      After=network-online.target
+      Wants=network-online.target
+      [Service]
+      User=consul
+      Group=consul
+      ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+      ExecReload=/bin/kill -HUP $MAINPID
+      KillSignal=SIGINT
+      Restart=on-failure
+      RestartSec=5
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/consul.service
+    mode: '0644'
+  notify: restart consul
+
+- name: Enable and start Consul
+  systemd:
+    name: consul
+    state: started
+    enabled: yes
+    daemon_reload: yes

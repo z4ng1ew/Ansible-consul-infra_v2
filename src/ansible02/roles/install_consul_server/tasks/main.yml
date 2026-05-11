@@ -1,24 +1,80 @@
 ---
-- name: Install Consul .deb package
+- name: Install unzip
   apt:
-    deb: "/tmp/{{ consul_deb_name }}"
-  vars:
-    consul_deb_name: consul_1.20.1-1_amd64.deb  # подставь свою версию
+    name: unzip
+    state: present
+    update_cache: yes
 
-- name: Create Consul data directory
+- name: Copy Consul zip
+  copy:
+    src: consul.zip
+    dest: /tmp/consul.zip
+
+- name: Unzip Consul
+  unarchive:
+    src: /tmp/consul.zip
+    dest: /usr/local/bin/
+    remote_src: yes
+    mode: '0755'
+
+- name: Create consul user
+  user:
+    name: consul
+    system: yes
+    shell: /bin/false
+    home: /etc/consul.d
+    create_home: no
+
+- name: Create Consul directories
   file:
-    path: /opt/consul/data
+    path: "{{ item }}"
     state: directory
     owner: consul
     group: consul
     mode: '0755'
+  loop:
+    - /opt/consul/data
+    - /etc/consul.d
 
-- name: Copy consul_server.hcl
+- name: Copy Consul server config
   copy:
-    src: "{{ playbook_dir }}/../consul01/consul_server.hcl"
+    content: |
+      datacenter       = "dc1"
+      node_name        = "consul-server"
+      server           = true
+      bootstrap_expect = 1
+      bind_addr        = "0.0.0.0"
+      advertise_addr   = "192.168.56.20"
+      client_addr      = "0.0.0.0"
+      ui_config {
+        enabled = true
+      }
+      data_dir  = "/opt/consul/data"
+      log_level = "INFO"
     dest: /etc/consul.d/consul.hcl
     owner: consul
     group: consul
+    mode: '0644'
+  notify: restart consul
+
+- name: Create Consul systemd service
+  copy:
+    content: |
+      [Unit]
+      Description=Consul Agent
+      After=network-online.target
+      Wants=network-online.target
+      [Service]
+      User=consul
+      Group=consul
+      ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+      ExecReload=/bin/kill -HUP $MAINPID
+      KillSignal=SIGINT
+      Restart=on-failure
+      RestartSec=5
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/consul.service
     mode: '0644'
   notify: restart consul
 
