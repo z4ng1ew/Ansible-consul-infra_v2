@@ -730,6 +730,8 @@ VM, run `vagrant status NAME`.
 
 ## 4. Роли Consul
 
+## 3. Написать плейбук для ansible и четыре роли: 
+
 ## 1) Плейбук в src\ansible02 написан для запуска ролей: install_consul_server, install_consul_client, install_db и install_hotels_service.
 
 
@@ -780,6 +782,13 @@ VM, run `vagrant status NAME`.
 
 
 ## 2) Роль install_consul_server устанавливает сервер Consul.
+   - install_consul_server, которая:
+      - работает с consul_server;
+      - копирует consul_server.hcl;
+      - устанавливает consul и необходимые для consul зависимости;
+      - запускает сервис consul;
+
+
 
 [text](ansible02/roles/install_consul_server/tasks/main.yml)
 ```
@@ -1557,12 +1566,6 @@ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 
 
-3. Написать плейбук для ansible и четыре роли: 
-   - install_consul_server, которая:
-      - работает с consul_server;
-      - копирует consul_server.hcl;
-      - устанавливает consul и необходимые для consul зависимости;
-      - запускает сервис consul;
    - install_consul_client, которая:
       - работает с api и db;
       - копирует consul_client.hcl;
