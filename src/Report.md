@@ -469,11 +469,25 @@ Apache is running on node02 (192.168.56.12)
 
 
 
+## Part 2. Service Discovery
+
+Теперь перейдем к обнаружению сервисов. В этой главе предстоит сымитировать два удаленных сервиса — api и БД, и осуществить между ними подключение через Service Discovery с использованием Consul.
+
+## Задание
+
+1. Написать два конфигурационных файла для consul (информация по consul в материалах):
+   - consul_server.hcl:
+      - настроить агент как сервер;
+      - указать в advertise_addr интерфейс, направленный во внутреннюю сеть Vagrant;
+   - consul_client.hcl:
+      - настроить агент как клиент;
+      - указать в advertise_addr интерфейс, направленный во внутреннюю сеть Vagrant.
 
 
 
 
-  ## 3. Конфигурационные файлы Consul
+
+## 3. Конфигурационные файлы Consul
 
 ## 1) Существуют конфигурационные файлы для сервера и клиента, в которых advertise_addr указывает сетевой интерфейс, направленный во внутреннюю сеть Vagrant.
 
@@ -542,7 +556,132 @@ log_level = "INFO"
 
 
 
-  ## 4. Роли Consul
+
+
+2. Создать с помощью Vagrant четыре машины: consul_server, api, manager и db.
+   - Прокинуть порт 8082 с api на локальную машину для доступа к пока еще не развернутому api.
+   - Прокинуть порт 8500 с consul_server для доступа к ui consul. 
+
+
+
+```
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "my-ubuntu2204"
+  config.ssh.insert_key = false
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provider "libvirt" do |libvirt|
+    libvirt.uri    = 'qemu:///system'
+    libvirt.driver = "kvm"
+    libvirt.memory = 2048
+    libvirt.cpus   = 2
+    libvirt.nested = true
+    libvirt.qemu_use_agent = true
+  end
+
+  config.vm.boot_timeout = 600
+
+  config.vm.provision "fix-private-net", type: "shell", inline: <<-'SHELL'
+    case "$(hostname)" in
+      consul-server) IP="192.168.56.20" ;;
+      api)           IP="192.168.56.21" ;;
+      manager2)      IP="192.168.56.22" ;;
+      db)            IP="192.168.56.23" ;;
+      *)             echo "Unknown hostname"; exit 0 ;;
+    esac
+    IFACE=$(ip -br link | awk '$1 != "lo" && !/^ens5|^eth0/ {print $1; exit}')
+    [ -z "$IFACE" ] && { echo "Second interface not found"; exit 0; }
+    cat > /etc/netplan/60-private.yaml <<EOF
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    ${IFACE}:
+      dhcp4: false
+      addresses: [${IP}/24]
+EOF
+    chmod 600 /etc/netplan/60-private.yaml
+    nohup bash -c "sleep 1 && netplan apply" > /tmp/netplan-bg.log 2>&1 &
+    disown
+    echo "Configured ${IFACE} = ${IP}"
+  SHELL
+
+  config.vm.define "consul_server" do |cs|
+    cs.vm.hostname = "consul-server"
+    cs.vm.provider "libvirt" do |lv|
+      lv.management_network_mac = "52:54:00:AA:BB:10"
+    end
+    cs.vm.network "private_network",
+      ip: "192.168.56.20",
+      libvirt__network_name: "vagrant-private",
+      libvirt__dhcp_enabled: false,
+      libvirt__forward_mode: "nat",
+      auto_config: false,
+      mac: "525400222220"
+    cs.vm.network "forwarded_port", guest: 8500, host: 8500, auto_correct: true
+  end
+
+  config.vm.define "api" do |api|
+    api.vm.hostname = "api"
+    api.vm.provider "libvirt" do |lv|
+      lv.memory = 4096
+      lv.cpus   = 4
+      lv.management_network_mac = "52:54:00:AA:BB:11"
+    end
+    api.vm.network "private_network",
+      ip: "192.168.56.21",
+      libvirt__network_name: "vagrant-private",
+      libvirt__dhcp_enabled: false,
+      libvirt__forward_mode: "nat",
+      auto_config: false,
+      mac: "525400222221"
+    api.vm.network "forwarded_port", guest: 8082, host: 8082, auto_correct: true
+  end
+
+  config.vm.define "manager2" do |mgr|
+    mgr.vm.hostname = "manager2"
+    mgr.vm.provider "libvirt" do |lv|
+      lv.management_network_mac = "52:54:00:AA:BB:12"
+    end
+    mgr.vm.network "private_network",
+      ip: "192.168.56.22",
+      libvirt__network_name: "vagrant-private",
+      libvirt__dhcp_enabled: false,
+      libvirt__forward_mode: "nat",
+      auto_config: false,
+      mac: "525400222222"
+    mgr.vm.provision "shell", inline: <<-SHELL
+      apt-get update && apt-get install -y ansible
+    SHELL
+  end
+
+  config.vm.define "db" do |db|
+    db.vm.hostname = "db"
+    db.vm.provider "libvirt" do |lv|
+      lv.management_network_mac = "52:54:00:AA:BB:13"
+    end
+    db.vm.network "private_network",
+      ip: "192.168.56.23",
+      libvirt__network_name: "vagrant-private",
+      libvirt__dhcp_enabled: false,
+      libvirt__forward_mode: "nat",
+      auto_config: false,
+      mac: "525400222223"
+  end
+end
+
+```
+
+
+
+
+
+
+## 4. Роли Consul
 
 ## 1) Плейбук в src\ansible02 написан для запуска ролей: install_consul_server, install_consul_client, install_db и install_hotels_service.
 
@@ -1396,19 +1535,7 @@ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 
 
-## Part 2. Service Discovery
 
-Теперь перейдем к обнаружению сервисов. В этой главе тебе предстоит сымитировать два удаленных сервиса — api и БД, и осуществить между ними подключение через Service Discovery с использованием Consul.
-
-### Задание
-
-1. Написать два конфигурационных файла для consul (информация по consul в материалах):
-   - consul_server.hcl:
-      - настроить агент как сервер;
-      - указать в advertise_addr интерфейс, направленный во внутреннюю сеть Vagrant;
-   - consul_client.hcl:
-      - настроить агент как клиент;
-      - указать в advertise_addr интерфейс, направленный во внутреннюю сеть Vagrant.
 
 2. Создать с помощью Vagrant четыре машины: consul_server, api, manager и db.
    - Прокинуть порт 8082 с api на локальную машину для доступа к пока еще не развернутому api.
