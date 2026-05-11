@@ -1,0 +1,5 @@
+---
+- name: restart hotel-service
+  systemd:
+    name: hotel-service
+    state: restarted

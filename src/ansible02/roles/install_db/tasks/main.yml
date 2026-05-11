@@ -31,10 +31,11 @@
 - name: Flush handlers
   meta: flush_handlers
 
-- name: Create hotels_db database
+- name: Create hotels_db database with correct owner
   become_user: postgres
   postgresql_db:
     name: hotels_db
+    owner: hotels_user
     state: present
 
 - name: Create db user
@@ -42,36 +43,13 @@
   postgresql_user:
     name: hotels_user
     password: hotels_pass
-    db: hotels_db
-    priv: ALL
     state: present
+    role_attr_flags: CREATEDB
 
-- name: Create hotels table and insert data
-  become_user: postgres
-  postgresql_query:
-    db: hotels_db
-    query: |
-      CREATE TABLE IF NOT EXISTS hotels (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        city VARCHAR(255) NOT NULL,
-        price_per_night INTEGER NOT NULL
-      );
-      INSERT INTO hotels (name, city, price_per_night)
-      SELECT 'Grand Hotel', 'Moscow', 5000
-      WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE name = 'Grand Hotel');
-      INSERT INTO hotels (name, city, price_per_night)
-      SELECT 'Sea View Resort', 'Sochi', 8000
-      WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE name = 'Sea View Resort');
-      INSERT INTO hotels (name, city, price_per_night)
-      SELECT 'Mountain Lodge', 'Kazan', 3500
-      WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE name = 'Mountain Lodge');
-
-- name: Grant privileges to hotels_user
+- name: Grant all privileges
   become_user: postgres
   postgresql_privs:
     db: hotels_db
     role: hotels_user
-    type: table
-    objs: hotels
-    privs: SELECT,INSERT,UPDATE,DELETE
+    type: database
+    privs: ALL

@@ -12,11 +12,11 @@
     line: "{{ item.key }}={{ item.value }}"
   loop:
     - { key: "JAVA_HOME", value: "/usr/lib/jvm/java-8-openjdk-amd64" }
-    - { key: "DB_HOST", value: "db.service.consul" }
-    - { key: "DB_PORT", value: "5432" }
-    - { key: "DB_NAME", value: "hotels_db" }
-    - { key: "DB_USER", value: "hotels_user" }
-    - { key: "DB_PASS", value: "hotels_pass" }
+    - { key: "POSTGRES_HOST", value: "192.168.56.23" }
+    - { key: "POSTGRES_PORT", value: "5432" }
+    - { key: "POSTGRES_DB", value: "hotels_db" }
+    - { key: "POSTGRES_USER", value: "hotels_user" }
+    - { key: "POSTGRES_PASSWORD", value: "hotels_pass" }
     - { key: "SERVER_PORT", value: "8082" }
 
 - name: Create app directory
@@ -24,3 +24,36 @@
     path: /opt/hotels-service
     state: directory
     mode: '0755'
+
+- name: Copy hotel-service JAR
+  copy:
+    src: hotel-service.jar
+    dest: /opt/hotels-service/hotel-service.jar
+    mode: '0755'
+  notify: restart hotel-service
+
+- name: Create systemd service for hotel-service
+  copy:
+    content: |
+      [Unit]
+      Description=Hotel Service
+      After=network.target consul.service
+      [Service]
+      Type=simple
+      EnvironmentFile=/etc/environment
+      ExecStart=/usr/lib/jvm/java-8-openjdk-amd64/bin/java -jar /opt/hotels-service/hotel-service.jar
+      Restart=on-failure
+      RestartSec=10
+      WorkingDirectory=/opt/hotels-service
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/hotel-service.service
+    mode: '0644'
+  notify: restart hotel-service
+
+- name: Enable and start hotel-service
+  systemd:
+    name: hotel-service
+    state: started
+    enabled: yes
+    daemon_reload: yes
