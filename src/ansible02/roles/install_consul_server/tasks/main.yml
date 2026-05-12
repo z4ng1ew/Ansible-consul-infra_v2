@@ -57,24 +57,12 @@
     mode: '0644'
   notify: restart consul
 
-- name: Create Consul systemd service
+- name: Copy Consul server config
   copy:
-    content: |
-      [Unit]
-      Description=Consul Agent
-      After=network-online.target
-      Wants=network-online.target
-      [Service]
-      User=consul
-      Group=consul
-      ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
-      ExecReload=/bin/kill -HUP $MAINPID
-      KillSignal=SIGINT
-      Restart=on-failure
-      RestartSec=5
-      [Install]
-      WantedBy=multi-user.target
-    dest: /etc/systemd/system/consul.service
+    src: consul_server.hcl
+    dest: /etc/consul.d/consul.hcl
+    owner: consul
+    group: consul
     mode: '0644'
   notify: restart consul
 

@@ -737,7 +737,7 @@ VM, run `vagrant status NAME`.
 
 ![alt text](<imd/2/image copy 12.png>)
 **# 1. Сервис запущен**
-
+[text](ansible02/playbook.yml)
 ```
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ cat playbook.yml 
 ---
@@ -851,24 +851,12 @@ VM, run `vagrant status NAME`.
     mode: '0644'
   notify: restart consul
 
-- name: Create Consul systemd service
+- name: Copy Consul server config
   copy:
-    content: |
-      [Unit]
-      Description=Consul Agent
-      After=network-online.target
-      Wants=network-online.target
-      [Service]
-      User=consul
-      Group=consul
-      ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
-      ExecReload=/bin/kill -HUP $MAINPID
-      KillSignal=SIGINT
-      Restart=on-failure
-      RestartSec=5
-      [Install]
-      WantedBy=multi-user.target
-    dest: /etc/systemd/system/consul.service
+    src: consul_server.hcl
+    dest: /etc/consul.d/consul.hcl
+    owner: consul
+    group: consul
     mode: '0644'
   notify: restart consul
 
@@ -906,20 +894,6 @@ VM, run `vagrant status NAME`.
 ![alt text](<imd/2/image copy 10.png>)
 **Выполнение роли install_hotels_service — установка JDK 8, настройка глобальных переменных окружения и создание директории приложения**
 
-- Здесь наглядно видно, что роль:
-
-    1) Установила JDK 8
-    2) Создала все глобальные переменные окружения (JAVA_HOME, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, SERVER_PORT)
-    3) Создала директорию приложения
-
-- 403 Forbidden — это хорошо! Это значит, что:
-
-    1) JAR-файл запущен (иначе было бы "Connection refused")
-    2) Spring Boot приложение работает
-    3) Просто требуется авторизация (это нормально для CRUD API)
-
-
-
 ```
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ tail -20 /tmp/ansible-part2-v3.log
 TASK [install_hotels_service : Install JDK 8] **********************************
@@ -944,6 +918,21 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
 ```
+
+- Здесь наглядно видно, что роль:
+
+    1) Установила JDK 8
+    2) Создала все глобальные переменные окружения (JAVA_HOME, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, SERVER_PORT)
+    3) Создала директорию приложения
+
+- 403 Forbidden — это хорошо! Это значит, что:
+
+    1) JAR-файл запущен (иначе было бы "Connection refused")
+    2) Spring Boot приложение работает
+    3) Просто требуется авторизация (это нормально для CRUD API)
+
+
+
 
 
 
@@ -973,6 +962,10 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 ## 3) Роль install_consul_client устанавливает клиент Consul.
+      - работает с api и db;
+      - копирует consul_client.hcl;
+      - устанавливает consul, envoy и необходимые для consul зависимости; 
+      - запускает сервис consul и consul-envoy;
 
 [text](ansible02/roles/install_consul_client/tasks/main.yml)
 
@@ -1566,11 +1559,6 @@ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 
 
-   - install_consul_client, которая:
-      - работает с api и db;
-      - копирует consul_client.hcl;
-      - устанавливает consul, envoy и необходимые для consul зависимости; 
-      - запускает сервис consul и consul-envoy;
    - install_db, которая:
       - работает с db;
       - устанавливает postgres и запускает его;
