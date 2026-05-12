@@ -895,12 +895,6 @@ VM, run `vagrant status NAME`.
 
 ![alt text](<imd/2/image copy 5.png>)
 
-**Вывод команды consul members — consul-server работает в режиме server, статус alive**
-
-**Consul members**
-
-**ssh consul_server "consul members"**
-
 ```
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ ssh consul_server "consul members"
 Node           Address             Status  Type    Build   Protocol  DC   Partition  Segment
@@ -909,6 +903,14 @@ api            192.168.56.21:8301  alive   client  1.22.7  2         dc1  defaul
 db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  default    <default>
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
 ```
+
+
+**Вывод команды consul members — consul-server работает в режиме server, статус alive**
+
+**Consul members**
+
+**ssh consul_server "consul members"**
+
 
 
 
@@ -1105,12 +1107,62 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 
+![alt text](<imd/2/image copy 2.png>)
+
+**ssh comsul_server "consul members"**
+
+**Consul кластер — все ноды видят друг друга**
+
+**Consul members — api и db работают в режиме client, consul-server в режиме server**
 
 
 
 
 
 
+
+
+![alt text](<imd/2/image copy 6.png>)
+
+**Веб-интерфейс Consul (localhost:8500) показывает 3 узла: consul-server (Leader), api (client), db (client)**
+
+**Service Discovery**
+
+**Вкладка Nodes**
+
+**localhost:8500**
+
+>
+    api
+    1 Service
+
+        192.168.56.21 
+
+        v1.22.7 
+
+    consul-server
+    Leader 1 Service
+
+        192.168.56.20 
+
+        v1.22.7 
+
+    db
+    1 Service
+
+        192.168.56.23 
+
+        v1.22.7
+>
+
+- Что делает скрипт:
+
+    1) Устанавливает unzip и envoy
+    2) Распаковывает Consul
+    3) Создаёт пользователя и директории
+    4) Копирует клиентскую конфигурацию consul_client.hcl.j2
+    5) Создаёт две systemd-службы: consul.service и consul-envoy.service
+    5) Запускает обе службы
 
 
 
@@ -1189,6 +1241,74 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
     privs: ALL
 
 ```
+**Задачи роли install_db — установка PostgreSQL, создание пользователя hotels_user и базы hotels_db**
+
+
+
+
+
+![alt text](<imd/2/image copy 14.png>)
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh db2 "sudo -u postgres psql -d hotels_db -c '\dt'"
+could not change directory to "/home/vagrant": Permission denied
+            List of relations
+ Schema |   Name    | Type  |    Owner    
+--------+-----------+-------+-------------
+ public | cities    | table | hotels_user
+ public | countries | table | hotels_user
+ public | hotels    | table | hotels_user
+(3 rows)
+
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
+could not change directory to "/home/vagrant": Permission denied
+ hotel_id |  address  | cost |              hotel_uid               | hotel_name | rooms | city_id 
+----------+-----------+------+--------------------------------------+------------+-------+---------
+     1000 | Address 1 | 2000 | 9d05ba36-bf8d-11eb-8529-0242ac130003 | Hotel 1    |   100 |    1000
+     2000 | Address 2 | 3000 | ab84f4e6-bf8d-11eb-8529-0242ac130003 | Hotel 2    |   200 |    2000
+     3000 | Address 3 | 5000 | b0698102-bf8d-11eb-8529-0242ac130003 | Hotel 3    |   250 |    3000
+(3 rows)
+
+```
+
+**Вывод команды \dt — в базе hotels_db созданы таблицы: cities, countries, hotels (владелец: hotels_user)**
+
+**Таблицы созданы через data.sql**
+
+
+
+
+
+
+![alt text](<imd/2/image copy 4.png>)
+
+**PostgreSQL — данные на месте**
+
+**Вывод SELECT * FROM hotels — в таблице 3 записи: Grand Hotel (Moscow), Sea View Resort (Sochi), Mountain Lodge (Kazan)**
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
+could not change directory to "/home/vagrant": Permission denied
+ id |      name       |  city  | price_per_night 
+----+-----------------+--------+-----------------
+  1 | Grand Hotel     | Moscow |            5000
+  2 | Sea View Resort | Sochi  |            8000
+  3 | Mountain Lodge  | Kazan  |            3500
+(3 rows)
+```
+
+- Что делает скрипт:
+
+    1) Устанавливает PostgreSQL и необходимые пакеты (postgresql-contrib, python3-psycopg2, acl)
+    2) Запускает и добавляет в автозагрузку
+    3) Настраивает прослушивание всех интерфейсов (listen_addresses = '*')
+    4) Разрешает подключения из сети 192.168.56.0/24
+    5) Создаёт пользователя hotels_user с паролем
+    6) Создаёт базу hotels_db с владельцем hotels_user
+    7) Выдаёт все права пользователю на базу
+
+
+
 
 
 ## 5) Роль install_hotels_service открывает роль jdk-8-jdk, копирует исходный код сервиса, создает глобальные среды systems, запускает собранный JAR-файл с помощью команды.
@@ -1333,6 +1453,7 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 ```
 
+**Задачи роли install_hotels_service — установка OpenJDK 21, настройка переменных окружения, копирование JAR, создание systemd-службы**
 
 
 
@@ -1342,7 +1463,11 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 
+![alt text](<imd/2/image copy 10.png>)
 
+**Выполнение роли install_hotels_service — установка JDK 8, настройка глобальных переменных окружения и создание директории приложения**
+
+**Вывод Ansible — установлены переменные окружения: JAVA_HOME, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, SERVER_PORT**
 
 
 
@@ -1497,33 +1622,6 @@ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 
 
-![alt text](<imd/2/image copy 6.png>)
-**Service Discovery**
-**Вкладка Nodes**
-**localhost:8500**
-
->
-    api
-    1 Service
-
-        192.168.56.21 
-
-        v1.22.7 
-
-    consul-server
-    Leader 1 Service
-
-        192.168.56.20 
-
-        v1.22.7 
-
-    db
-    1 Service
-
-        192.168.56.23 
-
-        v1.22.7
->
 
 
 
@@ -1534,39 +1632,6 @@ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 
 
-
-
-
-
-
-
-
-![alt text](<imd/2/image copy 14.png>)
-
-**3. Таблицы созданы через data.sql**
-
-
-```
-(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh db2 "sudo -u postgres psql -d hotels_db -c '\dt'"
-could not change directory to "/home/vagrant": Permission denied
-            List of relations
- Schema |   Name    | Type  |    Owner    
---------+-----------+-------+-------------
- public | cities    | table | hotels_user
- public | countries | table | hotels_user
- public | hotels    | table | hotels_user
-(3 rows)
-
-(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
-could not change directory to "/home/vagrant": Permission denied
- hotel_id |  address  | cost |              hotel_uid               | hotel_name | rooms | city_id 
-----------+-----------+------+--------------------------------------+------------+-------+---------
-     1000 | Address 1 | 2000 | 9d05ba36-bf8d-11eb-8529-0242ac130003 | Hotel 1    |   100 |    1000
-     2000 | Address 2 | 3000 | ab84f4e6-bf8d-11eb-8529-0242ac130003 | Hotel 2    |   200 |    2000
-     3000 | Address 3 | 5000 | b0698102-bf8d-11eb-8529-0242ac130003 | Hotel 3    |   250 |    3000
-(3 rows)
-
-```
 
 
 
@@ -1608,26 +1673,9 @@ db
 
 
 
-![alt text](<imd/2/image copy 2.png>)
-**Consul кластер — все ноды видят друг друга**
 
 
 
-
-
-
-![alt text](<imd/2/image copy 4.png>)
-**PostgreSQL — данные на месте**
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
-could not change directory to "/home/vagrant": Permission denied
- id |      name       |  city  | price_per_night 
-----+-----------------+--------+-----------------
-  1 | Grand Hotel     | Moscow |            5000
-  2 | Sea View Resort | Sochi  |            8000
-  3 | Mountain Lodge  | Kazan  |            3500
-(3 rows)
-
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
 
 
 
