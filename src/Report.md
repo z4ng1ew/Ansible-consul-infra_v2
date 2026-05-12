@@ -918,46 +918,6 @@ db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  defaul
 
 
 
-![alt text](<imd/2/image copy 10.png>)
-
-**Выполнение роли install_hotels_service — установка JDK 8, настройка глобальных переменных окружения и создание директории приложения**
-
-```
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ tail -20 /tmp/ansible-part2-v3.log
-TASK [install_hotels_service : Install JDK 8] **********************************
-ok: [api]
-
-TASK [install_hotels_service : Set global environment variables] ***************
-ok: [api] => (item={'key': 'JAVA_HOME', 'value': '/usr/lib/jvm/java-8-openjdk-amd64'})
-ok: [api] => (item={'key': 'DB_HOST', 'value': 'db.service.consul'})
-ok: [api] => (item={'key': 'DB_PORT', 'value': '5432'})
-ok: [api] => (item={'key': 'DB_NAME', 'value': 'hotels_db'})
-ok: [api] => (item={'key': 'DB_USER', 'value': 'hotels_user'})
-ok: [api] => (item={'key': 'DB_PASS', 'value': 'hotels_pass'})
-ok: [api] => (item={'key': 'SERVER_PORT', 'value': '8082'})
-
-TASK [install_hotels_service : Create app directory] ***************************
-ok: [api]
-
-PLAY RECAP *********************************************************************
-api                        : ok=13   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
-consul_server              : ok=9    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
-db                         : ok=18   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
-
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
-```
-
-- Здесь наглядно видно, что роль:
-
-    1) Установила JDK 8
-    2) Создала все глобальные переменные окружения (JAVA_HOME, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, SERVER_PORT)
-    3) Создала директорию приложения
-
-- 403 Forbidden — это хорошо! Это значит, что:
-
-    1) JAR-файл запущен (иначе было бы "Connection refused")
-    2) Spring Boot приложение работает
-    3) Просто требуется авторизация (это нормально для CRUD API)
 
 
 
@@ -967,25 +927,37 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 
-![alt text](<imd/2/image copy 15.png>)
-**# 2. API отвечает (403 = работает, но требует авторизацию)**
-**Сервис hotel-service запущен и отвечает на запросы (статус active running, HTTP 403 подтверждает работу API)**
 
-```
-(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh api2 "sudo systemctl status hotel-service --no-pager | head -8"
-● hotel-service.service - Hotel Service
-     Loaded: loaded (/etc/systemd/system/hotel-service.service; enabled; vendor preset: enabled)
-     Active: active (running) since Mon 2026-05-11 16:30:20 UTC; 1h 47min ago
-   Main PID: 5463 (java)
-      Tasks: 29 (limit: 2307)
-     Memory: 335.9M
-        CPU: 26.622s
-     CGroup: /system.slice/hotel-service.service
-(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh api2 "curl -sv http://localhost:8082/api/v1/hotels 2>&1 | grep -E 'HTTP|status|Forbidden'"
-> GET /api/v1/hotels HTTP/1.1
-< HTTP/1.1 403 
-{"timestamp":"2026-05-11T18:18:00.165+00:00","status":403,"error":"Forbidden","message":"","path":"/api/v1/hotels"}
-```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1463,11 +1435,98 @@ could not change directory to "/home/vagrant": Permission denied
 
 
 
+
 ![alt text](<imd/2/image copy 10.png>)
 
 **Выполнение роли install_hotels_service — установка JDK 8, настройка глобальных переменных окружения и создание директории приложения**
 
+
 **Вывод Ansible — установлены переменные окружения: JAVA_HOME, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, SERVER_PORT**
+
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ tail -20 /tmp/ansible-part2-v3.log
+TASK [install_hotels_service : Install JDK 8] **********************************
+ok: [api]
+
+TASK [install_hotels_service : Set global environment variables] ***************
+ok: [api] => (item={'key': 'JAVA_HOME', 'value': '/usr/lib/jvm/java-8-openjdk-amd64'})
+ok: [api] => (item={'key': 'DB_HOST', 'value': 'db.service.consul'})
+ok: [api] => (item={'key': 'DB_PORT', 'value': '5432'})
+ok: [api] => (item={'key': 'DB_NAME', 'value': 'hotels_db'})
+ok: [api] => (item={'key': 'DB_USER', 'value': 'hotels_user'})
+ok: [api] => (item={'key': 'DB_PASS', 'value': 'hotels_pass'})
+ok: [api] => (item={'key': 'SERVER_PORT', 'value': '8082'})
+
+TASK [install_hotels_service : Create app directory] ***************************
+ok: [api]
+
+PLAY RECAP *********************************************************************
+api                        : ok=13   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+consul_server              : ok=9    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+db                         : ok=18   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
+```
+
+- Здесь наглядно видно, что роль:
+
+    1) Установила JDK 8
+    2) Создала все глобальные переменные окружения (JAVA_HOME, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, SERVER_PORT)
+    3) Создала директорию приложения
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+![alt text](<imd/2/image copy 15.png>)
+**# 2. API отвечает (403 = работает, но требует авторизацию)**
+**Сервис hotel-service запущен и отвечает на запросы (статус active running, HTTP 403 подтверждает работу API)**
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh api2 "sudo systemctl status hotel-service --no-pager | head -8"
+● hotel-service.service - Hotel Service
+     Loaded: loaded (/etc/systemd/system/hotel-service.service; enabled; vendor preset: enabled)
+     Active: active (running) since Mon 2026-05-11 16:30:20 UTC; 1h 47min ago
+   Main PID: 5463 (java)
+      Tasks: 29 (limit: 2307)
+     Memory: 335.9M
+        CPU: 26.622s
+     CGroup: /system.slice/hotel-service.service
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh api2 "curl -sv http://localhost:8082/api/v1/hotels 2>&1 | grep -E 'HTTP|status|Forbidden'"
+> GET /api/v1/hotels HTTP/1.1
+< HTTP/1.1 403 
+{"timestamp":"2026-05-11T18:18:00.165+00:00","status":403,"error":"Forbidden","message":"","path":"/api/v1/hotels"}
+```
+
+- 403 Forbidden — это хорошо! Это значит, что:
+
+    1) JAR-файл запущен (иначе было бы "Connection refused")
+    2) Spring Boot приложение работает
+    3) Просто требуется авторизация (это нормально для CRUD API)
+
+
+
+
+
+
+
+
 
 
 
