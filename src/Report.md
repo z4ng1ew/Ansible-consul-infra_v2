@@ -972,9 +972,11 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 ```
 ---
-- name: Install unzip
+- name: Install dependencies (unzip, envoy)
   apt:
-    name: unzip
+    name:
+      - unzip
+      - envoy
     state: present
     update_cache: yes
 
@@ -1039,12 +1041,34 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
     mode: '0644'
   notify: restart consul
 
-- name: Enable and start Consul
+- name: Create Consul-Envoy systemd service
+  copy:
+    content: |
+      [Unit]
+      Description=Consul Envoy Sidecar Proxy
+      After=consul.service
+      Wants=consul.service
+      [Service]
+      User=consul
+      Group=consul
+      ExecStart=/usr/bin/envoy -c /etc/consul.d/envoy-bootstrap.json
+      Restart=on-failure
+      RestartSec=5
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/consul-envoy.service
+    mode: '0644'
+  notify: restart consul-envoy
+
+- name: Enable and start Consul and Envoy services
   systemd:
-    name: consul
+    name: "{{ item }}"
     state: started
     enabled: yes
     daemon_reload: yes
+  loop:
+    - consul
+    - consul-envoy
 
 ```
 
@@ -1052,6 +1076,10 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 ## 4) Роль install_db устанавливает Postgres и создает базу данных hotels_db.
+      - работает с db;
+      - устанавливает postgres и запускает его;
+      - создает базу данных `hotels_db`;
+
 
 [text](ansible02/roles/install_db/tasks/main.yml)
 ```
@@ -1115,6 +1143,16 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 ## 5) Роль install_hotels_service открывает роль jdk-8-jdk, копирует исходный код сервиса, создает глобальные среды systems, запускает собранный JAR-файл с помощью команды.
+      - работает с api;
+      - копирует исходный код сервиса;
+      - устанавливает `openjdk-21-jdk`;
+      - создает глобальные переменные окружения:
+         - POSTGRES_HOST="127.0.0.1";
+         - POSTGRES_PORT="5432";
+         - POSTGRES_DB="hotels_db";
+         - POSTGRES_USER="<имя пользователя>";
+         - POSTGRES_PASSWORD="<пароль пользователя>";
+      - запускает собранный jar-файл командой `java -jar <путь до hotel-service>/hotel-service/target/<имя jar-файла>.jar`.
 
 [text](ansible02/roles/install_hotels_service/tasks/main.yml)
 
@@ -1269,6 +1307,184 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 
+## 4. Проверить работоспособность CRUD-операций над сервисом отелей. В отчете отобразить результаты тестирования.
+
+
+
+
+## 6) Результаты ручных CRUD-тестов предоставляются в виде скриншота.
+CRUD-тесты для hotels_db (чек-лист 4.6)
+
+
+
+![alt text](<imd/2/image copy 11.png>)
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ ssh db2 "sudo -u postgres psql -d hotels_db -c \"INSERT INTO hotels (name, city, price_per_night) VALUES ('Test Hotel', 'SPb', 4000);\""
+could not change directory to "/home/vagrant": Permission denied
+INSERT 0 1
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
+could not change directory to "/home/vagrant": Permission denied
+ id |      name       |  city  | price_per_night 
+----+-----------------+--------+-----------------
+  1 | Grand Hotel     | Moscow |            5000
+  2 | Sea View Resort | Sochi  |            8000
+  3 | Mountain Lodge  | Kazan  |            3500
+  4 | Test Hotel      | SPb    |            4000
+(4 rows)
+
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ # UPDATE
+ssh db2 "sudo -u postgres psql -d hotels_db -c \"UPDATE hotels SET price_per_night = 4500 WHERE name = 'Test Hotel';\""
+ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
+could not change directory to "/home/vagrant": Permission denied
+UPDATE 1
+could not change directory to "/home/vagrant": Permission denied
+ id |      name       |  city  | price_per_night 
+----+-----------------+--------+-----------------
+  1 | Grand Hotel     | Moscow |            5000
+  2 | Sea View Resort | Sochi  |            8000
+  3 | Mountain Lodge  | Kazan  |            3500
+  4 | Test Hotel      | SPb    |            4500
+(4 rows)
+
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ # DELETE
+ssh db2 "sudo -u postgres psql -d hotels_db -c \"DELETE FROM hotels WHERE name = 'Test Hotel';\""
+ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
+could not change directory to "/home/vagrant": Permission denied
+DELETE 1
+could not change directory to "/home/vagrant": Permission denied
+ id |      name       |  city  | price_per_night 
+----+-----------------+--------+-----------------
+  1 | Grand Hotel     | Moscow |            5000
+  2 | Sea View Resort | Sochi  |            8000
+  3 | Mountain Lodge  | Kazan  |            3500
+(3 rows)
+
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
+```
+
+
+# CREATE
+ssh db2 "sudo -u postgres psql -d hotels_db -c \"INSERT INTO hotels (name, city, price_per_night) VALUES ('Test Hotel', 'SPb', 4000);\""
+
+# READ
+ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
+
+# UPDATE
+ssh db2 "sudo -u postgres psql -d hotels_db -c \"UPDATE hotels SET price_per_night = 4500 WHERE name = 'Test Hotel';\""
+ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
+
+# DELETE
+ssh db2 "sudo -u postgres psql -d hotels_db -c \"DELETE FROM hotels WHERE name = 'Test Hotel';\""
+ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5. Созданные в этом разделе файлы разместить в папках `src\ansible02` и `src\consul01` в личном репозитории.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+![alt text](<imd/2/image copy 6.png>)
+**Service Discovery**
+**Вкладка Nodes**
+**localhost:8500**
+
+>
+    api
+    1 Service
+
+        192.168.56.21 
+
+        v1.22.7 
+
+    consul-server
+    Leader 1 Service
+
+        192.168.56.20 
+
+        v1.22.7 
+
+    db
+    1 Service
+
+        192.168.56.23 
+
+        v1.22.7
+>
+
+
+
+
+
+
 
 
 
@@ -1281,6 +1497,7 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 ![alt text](<imd/2/image copy 14.png>)
+
 **3. Таблицы созданы через data.sql**
 
 
@@ -1396,32 +1613,6 @@ db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  defaul
 
 
 
-![alt text](<imd/2/image copy 6.png>)
->
-    api
-    1 Service
-
-        192.168.56.21 
-
-        v1.22.7 
-
-    consul-server
-    Leader 1 Service
-
-        192.168.56.20 
-
-        v1.22.7 
-
-    db
-    1 Service
-
-        192.168.56.23 
-
-        v1.22.7
->
-
-
-
 
 
 
@@ -1448,71 +1639,6 @@ ssh api2 "dig @127.0.0.1 -p 8600 db.service.consul +short"
 
 
 
-## 6) Результаты ручных CRUD-тестов предоставляются в виде скриншота.
-CRUD-тесты для hotels_db (чек-лист 4.6)
-
-
-
-![alt text](<imd/2/image copy 11.png>)
-
-```
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ ssh db2 "sudo -u postgres psql -d hotels_db -c \"INSERT INTO hotels (name, city, price_per_night) VALUES ('Test Hotel', 'SPb', 4000);\""
-could not change directory to "/home/vagrant": Permission denied
-INSERT 0 1
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
-could not change directory to "/home/vagrant": Permission denied
- id |      name       |  city  | price_per_night 
-----+-----------------+--------+-----------------
-  1 | Grand Hotel     | Moscow |            5000
-  2 | Sea View Resort | Sochi  |            8000
-  3 | Mountain Lodge  | Kazan  |            3500
-  4 | Test Hotel      | SPb    |            4000
-(4 rows)
-
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ # UPDATE
-ssh db2 "sudo -u postgres psql -d hotels_db -c \"UPDATE hotels SET price_per_night = 4500 WHERE name = 'Test Hotel';\""
-ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
-could not change directory to "/home/vagrant": Permission denied
-UPDATE 1
-could not change directory to "/home/vagrant": Permission denied
- id |      name       |  city  | price_per_night 
-----+-----------------+--------+-----------------
-  1 | Grand Hotel     | Moscow |            5000
-  2 | Sea View Resort | Sochi  |            8000
-  3 | Mountain Lodge  | Kazan  |            3500
-  4 | Test Hotel      | SPb    |            4500
-(4 rows)
-
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ # DELETE
-ssh db2 "sudo -u postgres psql -d hotels_db -c \"DELETE FROM hotels WHERE name = 'Test Hotel';\""
-ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
-could not change directory to "/home/vagrant": Permission denied
-DELETE 1
-could not change directory to "/home/vagrant": Permission denied
- id |      name       |  city  | price_per_night 
-----+-----------------+--------+-----------------
-  1 | Grand Hotel     | Moscow |            5000
-  2 | Sea View Resort | Sochi  |            8000
-  3 | Mountain Lodge  | Kazan  |            3500
-(3 rows)
-
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
-```
-
-
-# CREATE
-ssh db2 "sudo -u postgres psql -d hotels_db -c \"INSERT INTO hotels (name, city, price_per_night) VALUES ('Test Hotel', 'SPb', 4000);\""
-
-# READ
-ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
-
-# UPDATE
-ssh db2 "sudo -u postgres psql -d hotels_db -c \"UPDATE hotels SET price_per_night = 4500 WHERE name = 'Test Hotel';\""
-ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
-
-# DELETE
-ssh db2 "sudo -u postgres psql -d hotels_db -c \"DELETE FROM hotels WHERE name = 'Test Hotel';\""
-ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 
 
@@ -1550,31 +1676,3 @@ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 
 
-
-
-
-
-
-
-
-
-
-   - install_db, которая:
-      - работает с db;
-      - устанавливает postgres и запускает его;
-      - создает базу данных `hotels_db`;
-   - install_hotels_service, которая:
-      - работает с api;
-      - копирует исходный код сервиса;
-      - устанавливает `openjdk-21-jdk`;
-      - создает глобальные переменные окружения:
-         - POSTGRES_HOST="127.0.0.1";
-         - POSTGRES_PORT="5432";
-         - POSTGRES_DB="hotels_db";
-         - POSTGRES_USER="<имя пользователя>";
-         - POSTGRES_PASSWORD="<пароль пользователя>";
-      - запускает собранный jar-файл командой `java -jar <путь до hotel-service>/hotel-service/target/<имя jar-файла>.jar`.
-
-4. Проверить работоспособность CRUD-операций над сервисом отелей. В отчете отобразить результаты тестирования.
-
-5. Созданные в этом разделе файлы разместить в папках `src\ansible02` и `src\consul01` в личном репозитории.

@@ -1,7 +1,9 @@
 ---
-- name: Install unzip
+- name: Install dependencies (unzip, envoy)
   apt:
-    name: unzip
+    name:
+      - unzip
+      - envoy
     state: present
     update_cache: yes
 
@@ -66,9 +68,31 @@
     mode: '0644'
   notify: restart consul
 
-- name: Enable and start Consul
+- name: Create Consul-Envoy systemd service
+  copy:
+    content: |
+      [Unit]
+      Description=Consul Envoy Sidecar Proxy
+      After=consul.service
+      Wants=consul.service
+      [Service]
+      User=consul
+      Group=consul
+      ExecStart=/usr/bin/envoy -c /etc/consul.d/envoy-bootstrap.json
+      Restart=on-failure
+      RestartSec=5
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/consul-envoy.service
+    mode: '0644'
+  notify: restart consul-envoy
+
+- name: Enable and start Consul and Envoy services
   systemd:
-    name: consul
+    name: "{{ item }}"
     state: started
     enabled: yes
     daemon_reload: yes
+  loop:
+    - consul
+    - consul-envoy
