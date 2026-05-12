@@ -736,7 +736,10 @@ VM, run `vagrant status NAME`.
 
 
 ![alt text](<imd/2/image copy 12.png>)
-**# 1. Сервис запущен**
+
+**Содержимое файла playbook.yml с ролями для consul_server, consul_clients, db_servers и api_servers**
+
+
 [text](ansible02/playbook.yml)
 ```
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ cat playbook.yml 
@@ -771,6 +774,10 @@ VM, run `vagrant status NAME`.
 
 
 
+
+![alt text](<imd/2/image copy.png>)
+**ssh manager2 "cd ~/ansible02 && ansible-playbook -i inventory/hosts.ini playbook.yml 2>&1" | tee /tmp/ansible-part2-v3.log**
+**Все роли отработали без ошибок!**
 
 
 
@@ -1571,10 +1578,6 @@ db
 
 
 
-![alt text](<imd/2/image copy.png>)
-**ssh manager2 "cd ~/ansible02 && ansible-playbook -i inventory/hosts.ini playbook.yml 2>&1" | tee /tmp/ansible-part2-v3.log**
-**Все роли отработали без ошибок!**
-
 
 
 
@@ -1642,56 +1645,5 @@ db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  defaul
 ssh api2 "dig @127.0.0.1 -p 8600 db.service.consul +short"
 192.168.56.23
 >
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
