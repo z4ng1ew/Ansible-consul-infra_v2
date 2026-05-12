@@ -789,7 +789,6 @@ VM, run `vagrant status NAME`.
 
 
 ## 2) Роль install_consul_server устанавливает сервер Consul.
-   - install_consul_server, которая:
       - работает с consul_server;
       - копирует consul_server.hcl;
       - устанавливает consul и необходимые для consul зависимости;
@@ -877,18 +876,38 @@ VM, run `vagrant status NAME`.
 ```
 - Что делает этот скрипт:
 
-    1) Берет "упаковку" (consul.zip).
-    2) Распаковывает её.
-    3) Кладет готовую программу на место.
-    4) Запускает её.
+Что делает скрипт:
 
-- То есть происходит установки но только через зазипованный архив.
+    1) Устанавливает unzip для распаковки
+    2) Копирует архив consul.zip на сервер
+    3) Распаковывает бинарный файл в /usr/local/bin/
+    4) Создаёт пользователя consul и директории
+    5) Копирует конфигурацию consul.hcl с параметром server = true
+    6) Создаёт systemd-службу и запускает Consul
+
+- То есть происходит установка но только через зазипованный архив.
 
 
 
 
 
 
+
+
+![alt text](<imd/2/image copy 5.png>)
+
+**Вывод команды consul members — consul-server работает в режиме server, статус alive**
+
+**Consul members**
+
+**ssh consul_server "consul members"**
+
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ ssh consul_server "consul members"
+Node           Address             Status  Type    Build   Protocol  DC   Partition  Segment
+consul-server  192.168.56.20:8301  alive   server  1.22.7  2         dc1  default    <all>
+api            192.168.56.21:8301  alive   client  1.22.7  2         dc1  default    <default>
+db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  default    <default>
+(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
 
 
 
@@ -899,6 +918,7 @@ VM, run `vagrant status NAME`.
 
 
 ![alt text](<imd/2/image copy 10.png>)
+
 **Выполнение роли install_hotels_service — установка JDK 8, настройка глобальных переменных окружения и создание директории приложения**
 
 ```
@@ -1614,16 +1634,6 @@ could not change directory to "/home/vagrant": Permission denied
 
 
 
-![alt text](<imd/2/image copy 5.png>)
-**Consul members**
-**ssh consul_server "consul members"**
-
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ ssh consul_server "consul members"
-Node           Address             Status  Type    Build   Protocol  DC   Partition  Segment
-consul-server  192.168.56.20:8301  alive   server  1.22.7  2         dc1  default    <all>
-api            192.168.56.21:8301  alive   client  1.22.7  2         dc1  default    <default>
-db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  default    <default>
-(base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
 
 
 
