@@ -874,9 +874,8 @@ VM, run `vagrant status NAME`.
     daemon_reload: yes
 
 ```
-- Что делает этот скрипт:
 
-Что делает скрипт:
+- Что делает скрипт:
 
     1) Устанавливает unzip для распаковки
     2) Копирует архив consul.zip на сервер
@@ -885,7 +884,7 @@ VM, run `vagrant status NAME`.
     5) Копирует конфигурацию consul.hcl с параметром server = true
     6) Создаёт systemd-службу и запускает Consul
 
-- То есть происходит установка но только через зазипованный архив.
+- То есть происходит установка, но только через зазипованный архив.
 
 
 
@@ -902,14 +901,14 @@ VM, run `vagrant status NAME`.
 
 **ssh consul_server "consul members"**
 
+```
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ ssh consul_server "consul members"
 Node           Address             Status  Type    Build   Protocol  DC   Partition  Segment
 consul-server  192.168.56.20:8301  alive   server  1.22.7  2         dc1  default    <all>
 api            192.168.56.21:8301  alive   client  1.22.7  2         dc1  default    <default>
 db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  default    <default>
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
-
-
+```
 
 
 
