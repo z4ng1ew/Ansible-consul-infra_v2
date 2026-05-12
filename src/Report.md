@@ -1075,6 +1075,29 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## 4) Роль install_db устанавливает Postgres и создает базу данных hotels_db.
       - работает с db;
       - устанавливает postgres и запускает его;
@@ -1401,13 +1424,9 @@ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 5. Созданные в этом разделе файлы разместить в папках `src\ansible02` и `src\consul01` в личном репозитории.
 
+![alt text](<imd/2/image copy 16.png>)
 
-
-
-
-
-
-
+![alt text](<imd/2/image copy 17.png>)
 
 
 
