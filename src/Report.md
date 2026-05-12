@@ -734,6 +734,7 @@ VM, run `vagrant status NAME`.
 
 ## 1) Плейбук в src\ansible02 написан для запуска ролей: install_consul_server, install_consul_client, install_db и install_hotels_service.
 
+## Рис. 1. Файл playbook.yml с описанием четырёх ролей
 
 ![alt text](<imd/2/image copy 12.png>)
 
@@ -773,7 +774,7 @@ VM, run `vagrant status NAME`.
 
 
 
-
+## Рис. 2. Успешное выполнение всех ролей Ansible
 
 ![alt text](<imd/2/image copy.png>)
 **ssh manager2 "cd ~/ansible02 && ansible-playbook -i inventory/hosts.ini playbook.yml 2>&1" | tee /tmp/ansible-part2-v3.log**
@@ -892,6 +893,9 @@ VM, run `vagrant status NAME`.
 
 
 
+
+
+## Рис. Consul кластер — сервер в режиме Leader
 
 ![alt text](<imd/2/image copy 5.png>)
 
@@ -1072,12 +1076,17 @@ db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  defaul
 
 ```
 
+**Задачи роли install_consul_client — установка Consul, Envoy, запуск обоих сервисов**
 
 
 
 
 
 
+
+
+
+## Рис. Все ноды видят друг друга в кластере
 
 ![alt text](<imd/2/image copy 2.png>)
 
@@ -1092,7 +1101,7 @@ db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  defaul
 
 
 
-
+## Рис. Consul UI — вкладка Nodes
 
 ![alt text](<imd/2/image copy 6.png>)
 
@@ -1219,6 +1228,15 @@ db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  defaul
 
 
 
+
+
+
+
+
+
+
+## Рис. Код роли install_db
+
 ![alt text](<imd/2/image copy 14.png>)
 
 ```
@@ -1252,6 +1270,11 @@ could not change directory to "/home/vagrant": Permission denied
 
 
 
+
+
+
+## Рис. Таблицы созданы в базе данных
+
 ![alt text](<imd/2/image copy 4.png>)
 
 **PostgreSQL — данные на месте**
@@ -1278,6 +1301,50 @@ could not change directory to "/home/vagrant": Permission denied
     5) Создаёт пользователя hotels_user с паролем
     6) Создаёт базу hotels_db с владельцем hotels_user
     7) Выдаёт все права пользователю на базу
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1435,7 +1502,7 @@ could not change directory to "/home/vagrant": Permission denied
 
 
 
-
+## Рис. Выполнение роли — установка JDK и переменных
 ![alt text](<imd/2/image copy 10.png>)
 
 **Выполнение роли install_hotels_service — установка JDK 8, настройка глобальных переменных окружения и создание директории приложения**
@@ -1490,13 +1557,11 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 
+## Рис. Сервис hotel-service запущен
 
-
-
-
+Рис. Сервис hotel-service запущен
+Рис. API отвечает (HTTP 403)
 ![alt text](<imd/2/image copy 15.png>)
-**# 2. API отвечает (403 = работает, но требует авторизацию)**
-**Сервис hotel-service запущен и отвечает на запросы (статус active running, HTTP 403 подтверждает работу API)**
 
 ```
 (base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh api2 "sudo systemctl status hotel-service --no-pager | head -8"
@@ -1514,6 +1579,14 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 {"timestamp":"2026-05-11T18:18:00.165+00:00","status":403,"error":"Forbidden","message":"","path":"/api/v1/hotels"}
 ```
 
+**# 2. API отвечает (403 = работает, но требует авторизацию)**
+
+**Сервис hotel-service запущен и отвечает на запросы (статус active running, HTTP 403 подтверждает работу API)**
+
+**systemctl status hotel-service — сервис active (running), Main PID: 5463 (java)**
+
+**curl http://localhost:8082/api/v1/hotels — HTTP 403 Forbidden (приложение работает, требуется авторизация)**
+
 - 403 Forbidden — это хорошо! Это значит, что:
 
     1) JAR-файл запущен (иначе было бы "Connection refused")
@@ -1524,7 +1597,19 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 
+- Что делает скрипт:
 
+    1) Устанавливает OpenJDK 21
+    2) Создаёт глобальные переменные в /etc/environment:
+        - POSTGRES_HOST="127.0.0.1"
+        - POSTGRES_PORT="5432"
+        - POSTGRES_DB="hotels_db"
+        - POSTGRES_USER="hotels_user"
+        - POSTGRES_PASSWORD="hotels_pass"
+    3) Создаёт директорию /opt/hotel-service/hotel-service/target
+    4) Копирует hotel-service.jar
+    5) Создаёт systemd-службу с командой запуска: java -jar /opt/hotel-service/hotel-service/target/hotel-service.jar
+    6) Запускает сервис и добавляет в автозагрузку
 
 
 
@@ -1546,9 +1631,11 @@ db                         : ok=18   changed=5    unreachable=0    failed=0    s
 
 
 ## 6) Результаты ручных CRUD-тестов предоставляются в виде скриншота.
-CRUD-тесты для hotels_db (чек-лист 4.6)
+
+## CRUD-тесты для hotels_db 
 
 
+## Рис. CRUD-операции над таблицей hotels
 
 ![alt text](<imd/2/image copy 11.png>)
 
@@ -1596,18 +1683,23 @@ could not change directory to "/home/vagrant": Permission denied
 (base) s@fedora:~/Ansible-consul-infra/src/ansible02$ 
 ```
 
+**Ручные CRUD-тесты — CREATE (INSERT Test Hotel), READ (SELECT), UPDATE (изменение цены на 4500), DELETE (удаление Test Hotel)**
 
-# CREATE
+
+
+## Тесты выполнены:
+
+- CREATE
 ssh db2 "sudo -u postgres psql -d hotels_db -c \"INSERT INTO hotels (name, city, price_per_night) VALUES ('Test Hotel', 'SPb', 4000);\""
 
-# READ
+- READ
 ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
-# UPDATE
+- UPDATE
 ssh db2 "sudo -u postgres psql -d hotels_db -c \"UPDATE hotels SET price_per_night = 4500 WHERE name = 'Test Hotel';\""
 ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
-# DELETE
+- DELETE
 ssh db2 "sudo -u postgres psql -d hotels_db -c \"DELETE FROM hotels WHERE name = 'Test Hotel';\""
 ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
@@ -1621,6 +1713,49 @@ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 
 
+## Service Discovery (Дополнительные доказательства)
+
+
+## Рис.  DNS-разрешение через Consul
+
+
+![alt text](<imd/2/image copy 7.png>)
+
+**Команда dig @127.0.0.1 -p 8600 db.service.consul +short возвращает 192.168.56.23 — Service Discovery работает**
+
+>
+ssh api2 "dig @127.0.0.1 -p 8600 db.service.consul +short"
+192.168.56.23
+>
+
+
+
+
+
+
+
+
+## Рис. Зарегистрированные сервисы в Consul
+
+
+
+
+
+![alt text](<imd/2/image copy 13.png>)
+**Consul видит все сервисы**
+
+```
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh consul_server "consul members"
+Node           Address             Status  Type    Build   Protocol  DC   Partition  Segment
+consul-server  192.168.56.20:8301  alive   server  1.22.7  2         dc1  default    <all>
+api            192.168.56.21:8301  alive   client  1.22.7  2         dc1  default    <default>
+db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  default    <default>
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh consul_server "consul catalog services"
+api
+consul
+db
+(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ 
+```
 
 
 
@@ -1632,7 +1767,16 @@ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 
 
-5. Созданные в этом разделе файлы разместить в папках `src\ansible02` и `src\consul01` в личном репозитории.
+
+
+
+
+
+
+
+
+
+5. Созданные в этом разделе файлы разместил в папках `src\ansible02` и `src\consul01` в личном репозитории.
 
 ![alt text](<imd/2/image copy 16.png>)
 
@@ -1696,21 +1840,6 @@ ssh db2 "sudo -u postgres psql -d hotels_db -c 'SELECT * FROM hotels;'"
 
 
 
-![alt text](<imd/2/image copy 13.png>)
-**Consul видит все сервисы**
-
-```
-(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh consul_server "consul members"
-Node           Address             Status  Type    Build   Protocol  DC   Partition  Segment
-consul-server  192.168.56.20:8301  alive   server  1.22.7  2         dc1  default    <all>
-api            192.168.56.21:8301  alive   client  1.22.7  2         dc1  default    <default>
-db             192.168.56.23:8301  alive   client  1.22.7  2         dc1  default    <default>
-(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ ssh consul_server "consul catalog services"
-api
-consul
-db
-(base) s@fedora:~/Ansible-consul-infra/src/services/hotel-service$ 
-```
 
 
 
@@ -1740,26 +1869,5 @@ db
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-![alt text](<imd/2/image copy 7.png>)
->
-ssh api2 "dig @127.0.0.1 -p 8600 db.service.consul +short"
-192.168.56.23
->
 
 
