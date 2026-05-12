@@ -5,87 +5,15 @@
 
 
 ## 1. Ansible preparation
+## 1. Подготовка Ansible
 
-### Создание трёх ВМ через Vagrant
 
-Использован Vagrantfile для одновременного создания manager, node01, node02 на провайдере libvirt.
+## Создание трёх ВМ через Vagrant
+
+
+> Использован Vagrantfile для одновременного создания manager, node01, node02 на провайдере libvirt.
 Vagrantfile не содержит shell-скриптов установки Docker — установка инструментов
 будет выполнена через Ansible-плейбуки в следующих шагах.
-
-![Список ВМ](screenshots/01-virsh-list.png)
-
-*Скриншот 1: Три ВМ (manager, node01, node02) в статусе running*
-
-![Vagrantfile](screenshots/02-vagrantfile.png)
-
-*Скриншот 2: Содержимое Vagrantfile — без apt install docker*
-
-### Подключение к manager и проверка сети с node01/node02
-
-Со станции хоста подключаемся к manager по приватной сети 192.168.56.10. На manager сгенерирован
-SSH-ключ ed25519 без passphrase, его публичная часть скопирована в `~/.ssh/authorized_keys`
-на каждой ноде. Это позволяет Ansible с manager управлять нодами без ввода пароля.
-
-```bash
-# Команды для подключения по SSH к воркерам с manager:
-ssh vagrant@192.168.56.11   # node01
-ssh vagrant@192.168.56.12   # node02
-```
-
-![SSH с manager на ноды](screenshots/03-ssh-manager-to-nodes.png)
-
-*Скриншот 3: Успешное подключение manager → node01 и manager → node02 по SSH-ключу*
-
-### Inventory-файл
-
-Файл `~/ansible/inventory.ini` на manager:
-
-```ini
-[nodes]
-node01 ansible_host=192.168.56.11
-node02 ansible_host=192.168.56.12
-
-[nodes:vars]
-ansible_user=vagrant
-ansible_ssh_private_key_file=~/.ssh/id_ed25519
-```
-
-![Inventory](screenshots/05-inventory.png)
-
-*Скриншот 5: Inventory-файл*
-
-### Результат модуля ping
-
-```bash
-ansible -i inventory.ini all -m ping
-```
-
-![Ping module](screenshots/04-ansible-ping.png)
-
-*Скриншот 4: Все ноды отвечают SUCCESS на ping-модуль Ansible*
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-1. Подготовка Ansible
-
-
 
 
 ## 1) Имеется файл Vagrant для создания manager, узлов node01 и node02.
@@ -210,7 +138,7 @@ ssh manager "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null vag
 
 
 
-## 3.3. SSH с менеджера на node01 без пароля
+## 3.3. SSH с менеджера на node02 без пароля
 
 ![alt text](<imd/1/image copy 9.png>)
 
@@ -1826,92 +1754,6 @@ db
 ![alt text](<imd/2/image copy 16.png>)
 
 ![alt text](<imd/2/image copy 17.png>)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
