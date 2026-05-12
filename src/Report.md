@@ -13,9 +13,11 @@ Vagrantfile не содержит shell-скриптов установки Dock
 будет выполнена через Ansible-плейбуки в следующих шагах.
 
 ![Список ВМ](screenshots/01-virsh-list.png)
+
 *Скриншот 1: Три ВМ (manager, node01, node02) в статусе running*
 
 ![Vagrantfile](screenshots/02-vagrantfile.png)
+
 *Скриншот 2: Содержимое Vagrantfile — без apt install docker*
 
 ### Подключение к manager и проверка сети с node01/node02
@@ -31,6 +33,7 @@ ssh vagrant@192.168.56.12   # node02
 ```
 
 ![SSH с manager на ноды](screenshots/03-ssh-manager-to-nodes.png)
+
 *Скриншот 3: Успешное подключение manager → node01 и manager → node02 по SSH-ключу*
 
 ### Inventory-файл
@@ -48,6 +51,7 @@ ansible_ssh_private_key_file=~/.ssh/id_ed25519
 ```
 
 ![Inventory](screenshots/05-inventory.png)
+
 *Скриншот 5: Inventory-файл*
 
 ### Результат модуля ping
@@ -57,6 +61,7 @@ ansible -i inventory.ini all -m ping
 ```
 
 ![Ping module](screenshots/04-ansible-ping.png)
+
 *Скриншот 4: Все ноды отвечают SUCCESS на ping-модуль Ansible*
 
 
@@ -87,13 +92,16 @@ ansible -i inventory.ini all -m ping
 ## 2) Файл Vagrant не запускает никаких скриптов оболочки для установки Docker или других инструментов, кроме Ansible.
 
 ![alt text](<imd/1/image copy.png>)
+
 **Vagrantfile**
 
 ![alt text](imd/1/image.png)
+
 **менеджер виртуальных машин**
 
 
 ![alt text](<imd/1/image copy 2.png>)
+
 **видны три ВМ в статусе running: src_manager, src_node01, src_node02.**
 **Vagrant создал три виртуальные машины**
 
@@ -105,6 +113,7 @@ ansible -i inventory.ini all -m ping
 
 
 ![alt text](<imd/1/image copy 3.png>)
+
 **Хост видит manager (192.168.56.10), node01 (192.168.56.11), node02 (192.168.56.12) по приватной сети**
 
 
@@ -130,6 +139,7 @@ exit
 ```
 
 ![alt text](<imd/1/image copy 4.png>)
+
 **генерируем SSH-ключ на менеджере**
 
 
@@ -188,18 +198,22 @@ ssh manager "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null vag
 ## 3.1. Генерация SSH-ключа на менеджере
 
 ![alt text](<imd/1/image copy 7.png>)
+
 **файлы ключа (id_ed25519, id_ed25519.pub) и содержимое публичного ключа.**
 
 
 ## 3.2. SSH с менеджера на node01 без пароля
 
 ![alt text](<imd/1/image copy 8.png>)
+
 **вывел node01 — без запроса пароля.**
 
 
 
 ## 3.3. SSH с менеджера на node01 без пароля
+
 ![alt text](<imd/1/image copy 9.png>)
+
 **вывел node02 — без запроса пароля.**
 
 
@@ -208,6 +222,7 @@ ssh manager "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null vag
 ## 3.4. sudo virsh list --all
 
 ![alt text](<imd/1/image copy 10.png>)
+
 **все три ВМ работают**
 
 
@@ -227,11 +242,13 @@ ssh manager "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null vag
 ## 4) Имеется результат выполнения модуля ping для Ansible.
 
 ![alt text](<imd/1/image copy 11.png>)
+
 **ssh manager "cd ~/ansible && ansible -i inventory.ini all -m ping"**
 
 
 
 ## 5) Имеется файл инвентаризации.
+
 ![alt text](<imd/1/image copy 12.png>)
 
 
@@ -263,31 +280,39 @@ scp -r services manager:~/
 1) Существует плейбук, который выполняет команду apt update, устанавливает Docker, Docker Compose, копирует файл Compose из менеджера и развертывает микросервисное приложение; этот плейбук выполняет эти задачи.
 
 ![alt text](<imd/1/image copy 14.png>)
+
 **ssh manager "cd ~/ansible01 && ansible-playbook -i inventory/hosts.ini playbook.yml -v" 2>&1 | tail -30 - сборка локально всех 9ти сервисов   -  ok=20 changed=6 unreachable=0 failed=0**
 
 
 ![alt text](<imd/1/image copy 15.png>)
+
 **Все 9 контейнеров UP, failed=0!**
 
 ![alt text](<imd/1/image copy 16.png>)
+
 **ssh node01 "sudo docker ps --format 'table {{.Names}}\t{{.Status}}'" - Все 9 контейнеров UP**
 **Ansible-плейбук успешно развернул все 9 контейнеров на сервере node01.**
 
 
 
 ![alt text](<imd/1/image copy 17.png>)
+
 **ssh node01 "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"**
 
 
 
 ![alt text](<imd/1/image copy 18.png>)
+
 **curl -s http://192.168.56.11:8081 | head -10**
+
 **Сервисы отвечают**
 
 
 
 ![alt text](<imd/1/image copy 19.png>)
+
 **curl -s http://192.168.56.11:8087 | head -5**
+
 **Сервисы отвечают**
 
 > Это значит:
@@ -303,7 +328,9 @@ scp -r services manager:~/
 
 
 ![alt text](<imd/1/image copy 21.png>)
+
 **curl -s http://192.168.56.11:8081/users | head -10**
+
 **отвечает**
 
 ```
@@ -324,7 +351,9 @@ scp -r services manager:~/
 
 
 ![alt text](<imd/1/image copy 20.png>)
+
 **ssh manager "cd ~/ansible01 && cat playbook.yml" | head -30**
+
 **Плейбук запускается с manager**
 
 
@@ -334,6 +363,7 @@ scp -r services manager:~/
 ## 2) Результаты тестов Postman представлены в виде скриншота.
 
 ![alt text](<imd/1/image copy 22.png>)
+
 **Все результаты  postman запросов 200/201**
 
 3) Существует три роли для развертывания приложения, развертывания сервера Apache и развертывания базы данных Postgres; первая роль назначается в файле инвентаризации первому узлу, а две другие — второму узлу.
@@ -341,11 +371,15 @@ scp -r services manager:~/
 ![alt text](<imd/1/image copy 23.png>)
 
 ![alt text](<imd/1/image copy 24.png>)
+
 **node02: ok=15 failed=0**
+
 **Apache, PostgreSQL, таблица с 3 записями**
 
 
+
 ![alt text](<imd/1/image copy 25.png>)
+
 **Apache в браузере**
 >
 http://192.168.56.12/
@@ -360,19 +394,23 @@ Apache is running on node02 (192.168.56.12)
 
 
 ![alt text](<imd/1/image copy 26.png>)
+
 **PLAY RECAP с обеими нодами failed=0**
 
 
 
 
 ![alt text](<imd/1/image copy 27.png>)
+
 **3 записи**
+
 **postgres устанавливает и запускает postgres, создает базу данных с произвольной таблицей и добавляет в нее три произвольные записи**
 
 
 
 
 ![alt text](<imd/1/image copy 28.png>)
+
 **docker ps - состояние  UP**
 
 
@@ -386,6 +424,7 @@ Apache is running on node02 (192.168.56.12)
 ##  Перенёс HCL в src/consul01
 
 ![alt text](imd/2/image.png)
+
 **Перенести HCL в src/consul01 (это требование задания)**
 
 
@@ -395,8 +434,9 @@ Apache is running on node02 (192.168.56.12)
 
 
 
->
+```
 (base) s@fedora:~/Ansible-consul-infra/src/ansible01$ tree 
+
 .
 ├── files
 │   ├── docker-compose.yml
@@ -429,7 +469,7 @@ Apache is running on node02 (192.168.56.12)
 
 19 directories, 10 files
 (base) s@fedora:~/Ansible-consul-infra/src/ansible01$ 
->
+```
 
 
 
@@ -494,9 +534,10 @@ Apache is running on node02 (192.168.56.12)
 
 
 ![alt text](<imd/2/image copy 8.png>)
+
 **Consul конфиг**
 
-указал advertise_addr = "192.168.56.20" (адрес внутренней сети).
+Указал advertise_addr = "192.168.56.20" (адрес внутренней сети).
 Теперь все узлы кластера знают, что для того чтобы попасть на этот сервис, нужно идти по адресу 192.168.56.11".
 Результат: Все работает, сервисы видят друг друга.
 
@@ -528,6 +569,7 @@ log_level = "INFO"
 
 
 ![alt text](<imd/2/image copy 9.png>)
+
 **Consul конфиг**
 
 
@@ -680,6 +722,7 @@ end
 
 
 ![alt text](<imd/2/image copy 3.png>)
+
 **все 4 виртуалки работают**
 
 
@@ -701,7 +744,9 @@ VM, run `vagrant status NAME`.
 
 
 ![alt text](<imd/1/image copy 30.png>)
+
 **Cкриншот из менеджера виртальных машин Linux**
+
 **4 запущено, 3 остановленны**
 
 
